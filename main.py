@@ -48,7 +48,9 @@ GOVINFO_BULK = (
 DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
 DATA_DIR.mkdir(exist_ok=True)
 
-# Populate with dateutil.holiday or hardcode key dates — stub for now
+# Federal holidays where no FR is published. Populate with dateutil.holiday
+# or hardcode key dates. Leaving empty means we'll try to fetch on holidays
+# and get a 404, which is handled gracefully by the retry loop.
 FEDERAL_HOLIDAYS: set = set()
 
 
