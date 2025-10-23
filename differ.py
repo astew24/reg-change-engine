@@ -69,6 +69,7 @@ def parse_fedregister_xml(xml_bytes: bytes) -> dict[str, DocEntry]:
 
     # Walk all elements looking for document containers.
     # The FR bulk XML wraps each notice/rule in <RULE>, <NOTICE>, <PRORULE> etc.
+    # PRESDOCU captures presidential documents; CORRECT captures errata/corrections.
     doc_tags = {"RULE", "NOTICE", "PRORULE", "PRESDOCU", "CORRECT", "EXEC"}
 
     for elem in root.iter():
