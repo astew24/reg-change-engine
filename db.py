@@ -14,6 +14,7 @@ DSN = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/r
 
 
 def get_conn():
+    """Open a new DB connection from DSN. Caller is responsible for closing."""
     return psycopg2.connect(DSN)
 
 
