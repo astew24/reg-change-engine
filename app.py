@@ -26,7 +26,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],   # open for now — restrict to known domains before prod deploy
     allow_methods=["GET"],
     allow_headers=["*"],
 )
