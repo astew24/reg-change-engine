@@ -44,6 +44,7 @@ class DiffRecord:
 
 _FRNS = "http://www.gpoinc.com/schema/frdoc-1-0"  # approximate namespace
 
+# Federal Register XML uses inconsistent namespacing across years — strip all namespace prefixes before tag comparison
 def _strip_ns(tag: str) -> str:
     return re.sub(r"\{[^}]*\}", "", tag)
 
