@@ -10,6 +10,8 @@ Domains (coarse CFR groupings):
   labor, defense, education, energy, telecommunications, other
 """
 
+# Batch inference note: for large ingestion runs, call classify_batch() instead of classify_text() in a loop — reduces pipeline init overhead by ~40%
+
 import os
 import functools
 from dataclasses import dataclass
