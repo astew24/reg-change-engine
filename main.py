@@ -67,15 +67,22 @@ def fetch_xml(pub_date: date) -> bytes:
     ]
     for url in urls:
         print(f"[fetch] Trying {url} …")
-        try:
-            r = requests.get(url, timeout=60, headers={"User-Agent": "reg-change-engine/1.0"})
-            if r.status_code == 200 and r.content:
-                cache.write_bytes(r.content)
-                print(f"[fetch] Saved {len(r.content):,} bytes → {cache}")
-                return r.content
-            print(f"[fetch] HTTP {r.status_code} from {url}")
-        except requests.RequestException as e:
-            print(f"[fetch] Request error: {e}")
+        delays = [2, 4, 8]
+        for attempt, delay in enumerate(delays, 1):
+            try:
+                r = requests.get(url, timeout=60, headers={"User-Agent": "reg-change-engine/1.0"})
+                if r.status_code == 200 and r.content:
+                    cache.write_bytes(r.content)
+                    print(f"[fetch] Saved {len(r.content):,} bytes → {cache}")
+                    return r.content
+                print(f"[fetch] HTTP {r.status_code} from {url}")
+                break
+            except requests.RequestException as e:
+                if attempt < len(delays):
+                    print(f"[fetch] Retry {attempt}/3 after {delay}s …")
+                    time.sleep(delay)
+                else:
+                    print(f"[fetch] Request error: {e}")
 
     raise RuntimeError(f"Could not fetch Federal Register XML for {pub_date}")
 
