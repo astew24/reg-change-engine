@@ -45,6 +45,9 @@ GOVINFO_BULK = (
 DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
 DATA_DIR.mkdir(exist_ok=True)
 
+# Populate with dateutil.holiday or hardcode key dates — stub for now
+FEDERAL_HOLIDAYS: set = set()
+
 
 def _cache_path(pub_date: date) -> Path:
     return DATA_DIR / f"fr_{pub_date.isoformat()}.xml"
@@ -92,10 +95,10 @@ def fetch_xml(pub_date: date) -> bytes:
 # ---------------------------------------------------------------------------
 
 def prev_business_day(d: date) -> date:
-    """Return the most recent weekday before d (skip Sat/Sun)."""
+    """Return the most recent weekday before d (skip Sat/Sun and federal holidays)."""
     delta = 1
     prev = d - timedelta(days=delta)
-    while prev.weekday() >= 5:  # 5=Sat, 6=Sun
+    while prev.weekday() >= 5 or prev in FEDERAL_HOLIDAYS:  # 5=Sat, 6=Sun
         delta += 1
         prev = d - timedelta(days=delta)
     return prev
