@@ -106,12 +106,15 @@ def classify_text(text: str, max_chars: int = 512, min_confidence: float = 0.0) 
     )
 
 
-def classify_batch(texts: list[str], max_chars: int = 512) -> list[Classification]:
+def classify_batch(texts: list[str], max_chars: int = 512, min_confidence: float = 0.0) -> list[Classification]:
     """Classify a batch of texts using the pipeline's native batching.
 
     Passes all snippets to the pipeline in a single call so the model can
     process them as a batch rather than one-at-a-time. Substantially faster
     than calling classify_text() in a loop for large ingestion runs.
+
+    min_confidence works the same as in classify_text() — predictions below
+    the threshold fall back to 'other'.
 
     Returns one Classification per input text, in the same order.
     """
@@ -132,6 +135,8 @@ def classify_batch(texts: list[str], max_chars: int = 512) -> list[Classificatio
         }
         best_domain = DOMAIN_LABELS[DOMAINS.index(result["labels"][0])]
         best_score = float(result["scores"][0])
+        if best_score < min_confidence:
+            best_domain = "other"
         classifications.append(Classification(
             domain=best_domain,
             score=best_score,
