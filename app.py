@@ -140,6 +140,22 @@ def list_domains(
             return [DomainCount(**dict(r)) for r in cur.fetchall()]
 
 
+@app.get("/stats", tags=["analytics"])
+def stats_summary():
+    """Return total changes grouped by domain and date."""
+    sql = """
+    SELECT domain, COUNT(*) AS total_changes, AVG(domain_score) AS avg_score
+    FROM changed_paragraphs
+    GROUP BY domain
+    ORDER BY total_changes DESC
+    """
+    import psycopg2.extras
+    with db.get_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(sql)
+            return [dict(r) for r in cur.fetchall()]
+
+
 @app.get("/publications", tags=["meta"])
 def list_publications():
     """Return dates of all ingested publications."""
