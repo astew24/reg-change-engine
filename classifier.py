@@ -100,5 +100,34 @@ def classify_text(text: str, max_chars: int = 512) -> Classification:
 
 
 def classify_batch(texts: list[str], max_chars: int = 512) -> list[Classification]:
-    """Classify a batch of texts. Returns one Classification per text."""
-    return [classify_text(t, max_chars) for t in texts]
+    """Classify a batch of texts using the pipeline's native batching.
+
+    Passes all snippets to the pipeline in a single call so the model can
+    process them as a batch rather than one-at-a-time. Substantially faster
+    than calling classify_text() in a loop for large ingestion runs.
+
+    Returns one Classification per input text, in the same order.
+    """
+    if not texts:
+        return []
+    pipe = _get_pipeline()
+    snippets = [t[:max_chars] for t in texts]
+    results = pipe(snippets, candidate_labels=DOMAINS, multi_label=False)
+    # pipeline returns a list when given a list
+    if isinstance(results, dict):
+        results = [results]
+    classifications = []
+    for result in results:
+        scores_by_label = {
+            DOMAIN_LABELS[DOMAINS.index(lbl)]: float(sc)
+            for lbl, sc in zip(result["labels"], result["scores"])
+            if lbl in DOMAINS
+        }
+        best_domain = DOMAIN_LABELS[DOMAINS.index(result["labels"][0])]
+        best_score = float(result["scores"][0])
+        classifications.append(Classification(
+            domain=best_domain,
+            score=best_score,
+            all_scores=scores_by_label,
+        ))
+    return classifications
