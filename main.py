@@ -16,9 +16,12 @@ Flow:
 
 import argparse
 import hashlib
+import logging
 import os
 import sys
 import time
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 from datetime import date, timedelta
 from pathlib import Path
 
