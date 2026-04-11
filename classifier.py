@@ -74,10 +74,14 @@ def _get_pipeline():
     )
 
 
-def classify_text(text: str, max_chars: int = 512) -> Classification:
+def classify_text(text: str, max_chars: int = 512, min_confidence: float = 0.0) -> Classification:
     """
     Classify a paragraph of regulatory text into one of DOMAIN_LABELS.
     Truncates to max_chars to keep inference fast.
+
+    If the top predicted label scores below min_confidence, the domain is
+    returned as "other" to avoid confidently mislabeling ambiguous paragraphs.
+    Set min_confidence=0.0 (default) to always return the top prediction.
     """
     pipe = _get_pipeline()
     snippet = text[:max_chars]
@@ -91,6 +95,9 @@ def classify_text(text: str, max_chars: int = 512) -> Classification:
     }
     best_domain = DOMAIN_LABELS[DOMAINS.index(result["labels"][0])]
     best_score = float(result["scores"][0])
+
+    if best_score < min_confidence:
+        best_domain = "other"
 
     return Classification(
         domain=best_domain,
