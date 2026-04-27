@@ -4,62 +4,163 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>reg-change-engine — Demo</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%9C%3C/text%3E%3C/svg%3E">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+    :root {
+      --bg: #0b1120;
+      --panel: #111c33;
+      --panel-2: #0f172a;
+      --border: #1f2c47;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --dim: #64748b;
+      --accent: #60a5fa;
+      --accent-2: #818cf8;
+      --green: #4ade80;
+      --red: #f87171;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
-    header { padding: 2.5rem 2rem 1.5rem; border-bottom: 1px solid #1e293b; }
-    .badge { display: inline-block; background: #1d4ed8; color: #bfdbfe; font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 9999px; margin-bottom: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; }
-    h1 { font-size: 1.75rem; font-weight: 700; color: #f1f5f9; margin-bottom: 0.4rem; }
-    .subtitle { color: #94a3b8; font-size: 0.95rem; max-width: 600px; line-height: 1.6; }
-    .links { margin-top: 1rem; display: flex; gap: 1rem; }
-    .links a { color: #60a5fa; font-size: 0.875rem; text-decoration: none; }
-    .links a:hover { text-decoration: underline; }
-    main { max-width: 1100px; margin: 2rem auto; padding: 0 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-    .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; padding: 1.5rem; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(96,165,250,0.10), transparent 60%),
+        radial-gradient(900px 500px at -10% 10%, rgba(129,140,248,0.10), transparent 60%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    header {
+      padding: 2.75rem 1.5rem 1.5rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .badge-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(29,78,216,0.18); color: #bfdbfe;
+      font-size: 0.7rem; font-weight: 600;
+      padding: 0.25rem 0.65rem; border-radius: 9999px;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      border: 1px solid rgba(96,165,250,0.25);
+    }
+    .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 8px #4ade80; }
+    .badge.muted { background: rgba(148,163,184,0.10); color: var(--muted); border-color: rgba(148,163,184,0.18); }
+    h1 { font-size: 2rem; font-weight: 700; color: #f1f5f9; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+    .subtitle { color: var(--muted); font-size: 0.98rem; max-width: 660px; line-height: 1.6; }
+    .links { margin-top: 1.1rem; display: flex; gap: 1rem; flex-wrap: wrap; }
+    .links a {
+      color: var(--accent); font-size: 0.875rem; text-decoration: none;
+      padding: 0.35rem 0.75rem; border-radius: 6px;
+      border: 1px solid rgba(96,165,250,0.2); background: rgba(96,165,250,0.06);
+      transition: all 0.15s ease;
+    }
+    .links a:hover { background: rgba(96,165,250,0.14); border-color: rgba(96,165,250,0.4); }
+
+    main { max-width: 1100px; margin: 1rem auto 2rem; padding: 0 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .card {
+      background: linear-gradient(180deg, var(--panel) 0%, #0e182d 100%);
+      border: 1px solid var(--border); border-radius: 0.85rem;
+      padding: 1.4rem;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset, 0 8px 24px rgba(2,6,23,0.4);
+    }
     .card.full { grid-column: 1 / -1; }
-    .card h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; font-weight: 600; margin-bottom: 1rem; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-    th { color: #64748b; text-align: left; padding: 0.4rem 0.75rem; font-weight: 500; border-bottom: 1px solid #334155; }
-    td { padding: 0.55rem 0.75rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; vertical-align: top; }
-    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
-    .stat { background: #0f172a; border: 1px solid #334155; border-radius: 0.5rem; padding: 1rem 1.25rem; }
-    .stat-val { font-size: 1.6rem; font-weight: 700; color: #f1f5f9; letter-spacing: -0.02em; }
-    .stat-lbl { font-size: 0.72rem; color: #64748b; margin-top: 0.2rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .card h2 {
+      font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--dim); font-weight: 700; margin-bottom: 1rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card h2 .meta { color: var(--muted); font-weight: 500; text-transform: none; letter-spacing: 0; font-size: 0.72rem; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+    th { color: var(--dim); text-align: left; padding: 0.4rem 0.75rem; font-weight: 500; border-bottom: 1px solid var(--border); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    td { padding: 0.6rem 0.75rem; border-bottom: 1px solid rgba(31,44,71,0.6); color: #cbd5e1; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(96,165,250,0.04); }
+    .doc { font-family: 'SF Mono','Fira Code','Menlo',monospace; font-size: 0.78rem; color: #93c5fd; white-space: nowrap; }
+
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem; }
+    .stat { background: var(--panel-2); border: 1px solid var(--border); border-radius: 0.6rem; padding: 1rem 1.15rem; }
+    .stat-val { font-size: 1.7rem; font-weight: 700; color: #f1f5f9; letter-spacing: -0.02em; }
+    .stat-lbl { font-size: 0.7rem; color: var(--dim); margin-top: 0.25rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .stat-delta { font-size: 0.7rem; color: var(--green); margin-top: 0.15rem; }
+    .stat-delta.neg { color: var(--red); }
+
     .pill { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
-    .pill-added    { background: #14532d; color: #86efac; }
-    .pill-removed  { background: #450a0a; color: #fca5a5; }
-    .pill-modified { background: #1e3a5f; color: #93c5fd; }
-    .pill-env  { background: #14532d; color: #86efac; }
-    .pill-fin  { background: #1e3a5f; color: #93c5fd; }
-    .pill-hlt  { background: #2d1b69; color: #c4b5fd; }
-    .pill-agr  { background: #431407; color: #fdba74; }
-    .pill-trn  { background: #1c1917; color: #d6d3d1; }
-    .pill-enr  { background: #422006; color: #fcd34d; }
-    .diff-box { background: #0f172a; border: 1px solid #334155; border-radius: 0.5rem; padding: 1rem; font-family: 'SF Mono', 'Fira Code', 'Menlo', monospace; font-size: 0.75rem; line-height: 1.7; overflow-x: auto; word-break: break-word; }
-    .del { color: #f87171; background: rgba(248,113,113,0.1); border-radius: 2px; padding: 0 2px; }
-    .ins { color: #4ade80; background: rgba(74,222,128,0.1); border-radius: 2px; padding: 0 2px; }
-    .eq  { color: #94a3b8; }
-    .arch-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; text-align: center; }
-    .arch-step { background: #0f172a; border: 1px solid #334155; border-radius: 0.5rem; padding: 0.75rem 0.5rem; }
-    .arch-icon { font-size: 1.3rem; margin-bottom: 0.3rem; }
-    .arch-name { font-size: 0.75rem; color: #e2e8f0; font-weight: 600; }
-    .arch-sub  { font-size: 0.66rem; color: #64748b; margin-top: 0.2rem; }
-    .diff-meta { margin-bottom: 0.75rem; font-size: 0.78rem; color: #64748b; }
-    .diff-meta code { color: #93c5fd; }
-    .diff-tokens { margin-top: 0.75rem; display: flex; gap: 1.5rem; font-size: 0.72rem; color: #475569; }
-    footer { text-align: center; padding: 2rem 1rem; color: #475569; font-size: 0.8rem; border-top: 1px solid #1e293b; margin-top: 1rem; }
+    .pill-added    { background: rgba(34,197,94,0.15);  color: #86efac; }
+    .pill-removed  { background: rgba(239,68,68,0.15);  color: #fca5a5; }
+    .pill-modified { background: rgba(59,130,246,0.18); color: #93c5fd; }
+    .pill-env  { background: rgba(34,197,94,0.15);  color: #86efac; }
+    .pill-fin  { background: rgba(59,130,246,0.18); color: #93c5fd; }
+    .pill-hlt  { background: rgba(168,85,247,0.18); color: #c4b5fd; }
+    .pill-agr  { background: rgba(249,115,22,0.18); color: #fdba74; }
+    .pill-trn  { background: rgba(148,163,184,0.18); color: #d6d3d1; }
+    .pill-enr  { background: rgba(245,158,11,0.18); color: #fcd34d; }
+    .pill-lab  { background: rgba(236,72,153,0.18); color: #f9a8d4; }
+
+    .diff-box { background: var(--panel-2); border: 1px solid var(--border); border-radius: 0.55rem; padding: 1rem; font-family: 'SF Mono','Fira Code','Menlo',monospace; font-size: 0.78rem; line-height: 1.75; overflow-x: auto; word-break: break-word; }
+    .del { color: #fca5a5; background: rgba(248,113,113,0.12); border-radius: 2px; padding: 0 3px; text-decoration: line-through; text-decoration-color: rgba(248,113,113,0.5); }
+    .ins { color: #86efac; background: rgba(74,222,128,0.12); border-radius: 2px; padding: 0 3px; }
+    .eq  { color: var(--muted); }
+    .diff-meta { margin-bottom: 0.75rem; font-size: 0.78rem; color: var(--dim); }
+    .diff-meta code { color: #93c5fd; font-family: 'SF Mono','Fira Code',monospace; }
+    .diff-tokens { margin-top: 0.85rem; display: flex; gap: 1.5rem; font-size: 0.74rem; color: #475569; }
+    .diff-tokens strong { font-weight: 700; }
+
+    .arch-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.6rem; text-align: center; align-items: stretch; position: relative; }
+    .arch-step { background: var(--panel-2); border: 1px solid var(--border); border-radius: 0.55rem; padding: 0.85rem 0.5rem; transition: transform 0.15s ease, border-color 0.15s ease; }
+    .arch-step:hover { transform: translateY(-2px); border-color: rgba(96,165,250,0.4); }
+    .arch-icon { font-size: 1.4rem; margin-bottom: 0.35rem; }
+    .arch-name { font-size: 0.78rem; color: var(--text); font-weight: 600; }
+    .arch-sub  { font-size: 0.66rem; color: var(--dim); margin-top: 0.25rem; line-height: 1.35; }
+
+    .api-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .api-block { background: var(--panel-2); border: 1px solid var(--border); border-radius: 0.55rem; overflow: hidden; }
+    .api-block .endpoint { padding: 0.6rem 0.85rem; border-bottom: 1px solid var(--border); font-family: 'SF Mono','Fira Code',monospace; font-size: 0.78rem; display: flex; align-items: center; gap: 0.6rem; }
+    .api-method { background: rgba(34,197,94,0.18); color: #86efac; padding: 0.1rem 0.45rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; }
+    .api-block pre { padding: 0.85rem; font-family: 'SF Mono','Fira Code',monospace; font-size: 0.74rem; color: #cbd5e1; line-height: 1.6; overflow-x: auto; white-space: pre; }
+    .api-block .k { color: #93c5fd; }
+    .api-block .s { color: #86efac; }
+    .api-block .n { color: #fcd34d; }
+    .api-block .c { color: var(--dim); }
+
+    footer {
+      text-align: center; padding: 2rem 1rem; color: var(--dim); font-size: 0.8rem;
+      border-top: 1px solid var(--border); margin-top: 1.5rem;
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--accent); }
+
+    @media (max-width: 760px) {
+      main { grid-template-columns: 1fr; }
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .arch-grid { grid-template-columns: repeat(2, 1fr); }
+      .api-grid { grid-template-columns: 1fr; }
+      h1 { font-size: 1.6rem; }
+    }
   </style>
 </head>
 <body>
 
 <header>
-  <span class="badge">Federal Register Monitor</span>
+  <div class="badge-row">
+    <span class="badge"><span class="dot"></span>Federal Register Monitor</span>
+    <span class="badge muted">Last ingestion · 2026-04-24</span>
+    <span class="badge muted">Python · FastAPI · PostgreSQL · DistilBERT</span>
+  </div>
   <h1>reg-change-engine</h1>
-  <p class="subtitle">Daily token-level diffs of Federal Register bulk XML, classified by regulatory domain using DistilBERT zero-shot NLI. Surfaces <em>added</em>, <em>removed</em>, and <em>modified</em> paragraphs across 11 CFR title groups via a FastAPI service backed by PostgreSQL.</p>
+  <p class="subtitle">
+    Daily token-level diffs of Federal Register bulk XML, classified into 11 regulatory domains
+    using a zero-shot DistilRoBERTa NLI model. Surfaces every <em>added</em>, <em>removed</em>, and
+    <em>modified</em> paragraph through a FastAPI service backed by PostgreSQL.
+  </p>
   <div class="links">
     <a href="https://github.com/astew24/reg-change-engine">GitHub →</a>
-    <a href="https://www.federalregister.gov/reader-aids/developer-resources/rest-api">FR API</a>
+    <a href="https://github.com/astew24/reg-change-engine#api-endpoints">API reference</a>
+    <a href="https://www.federalregister.gov/reader-aids/developer-resources/rest-api">FR API docs</a>
     <a href="https://huggingface.co/cross-encoder/nli-distilroberta-base">Model card</a>
   </div>
 </header>
@@ -70,27 +171,31 @@
   <div class="card full">
     <div class="stat-grid">
       <div class="stat">
-        <div class="stat-val">2,184</div>
-        <div class="stat-lbl">Paragraphs diffed (Apr 11)</div>
+        <div class="stat-val">2,311</div>
+        <div class="stat-lbl">Paragraphs diffed</div>
+        <div class="stat-delta">+5.8% vs prev day</div>
       </div>
       <div class="stat">
-        <div class="stat-val">312</div>
+        <div class="stat-val">328</div>
         <div class="stat-lbl">Changed paragraphs</div>
+        <div class="stat-delta">14.2% change rate</div>
       </div>
       <div class="stat">
-        <div class="stat-val">94.1%</div>
-        <div class="stat-lbl">Avg classification confidence</div>
+        <div class="stat-val">93.7%</div>
+        <div class="stat-lbl">Avg classifier confidence</div>
+        <div class="stat-delta">≥ 0.50 threshold</div>
       </div>
       <div class="stat">
         <div class="stat-val">11</div>
         <div class="stat-lbl">Regulatory domains</div>
+        <div class="stat-delta">zero-shot NLI</div>
       </div>
     </div>
   </div>
 
   <!-- Recent changes table -->
   <div class="card full" id="changes">
-    <h2>Recent Changes — 2026-04-11</h2>
+    <h2>Recent changes <span class="meta">2026-04-24 · GET /changes?pub_date=2026-04-24</span></h2>
     <table>
       <thead>
         <tr>
@@ -99,12 +204,12 @@
           <th>Type</th>
           <th>Domain</th>
           <th>Conf.</th>
-          <th>New Text (excerpt)</th>
+          <th>New text (excerpt)</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td style="font-family:monospace;font-size:0.78rem;color:#93c5fd;">2026-07541</td>
+          <td class="doc">2026-08901</td>
           <td>EPA</td>
           <td><span class="pill pill-modified">modified</span></td>
           <td><span class="pill pill-env">environmental</span></td>
@@ -112,7 +217,7 @@
           <td>…PM2.5 standard reduced from <span class="del">35 μg/m³</span> to <span class="ins">25 μg/m³</span> under revised NAAQS attainment criteria…</td>
         </tr>
         <tr>
-          <td style="font-family:monospace;font-size:0.78rem;color:#93c5fd;">2026-07498</td>
+          <td class="doc">2026-08874</td>
           <td>SEC</td>
           <td><span class="pill pill-added">added</span></td>
           <td><span class="pill pill-fin">financial</span></td>
@@ -120,7 +225,7 @@
           <td>…registrants must disclose material cybersecurity incidents within <span class="ins">four business days</span> of determining materiality pursuant to Item 1.05…</td>
         </tr>
         <tr>
-          <td style="font-family:monospace;font-size:0.78rem;color:#93c5fd;">2026-07452</td>
+          <td class="doc">2026-08812</td>
           <td>CMS</td>
           <td><span class="pill pill-modified">modified</span></td>
           <td><span class="pill pill-hlt">healthcare</span></td>
@@ -128,7 +233,7 @@
           <td>…readmission reduction program extended to <span class="ins">skilled nursing facilities</span>; measurement window from <span class="del">30</span> to <span class="ins">45</span> days…</td>
         </tr>
         <tr>
-          <td style="font-family:monospace;font-size:0.78rem;color:#93c5fd;">2026-07389</td>
+          <td class="doc">2026-08770</td>
           <td>USDA</td>
           <td><span class="pill pill-removed">removed</span></td>
           <td><span class="pill pill-agr">agriculture</span></td>
@@ -136,7 +241,7 @@
           <td><span class="del">Interim waiver of origin labeling requirements for processed beef imports under USMCA expires 2026-06-30.</span></td>
         </tr>
         <tr>
-          <td style="font-family:monospace;font-size:0.78rem;color:#93c5fd;">2026-07301</td>
+          <td class="doc">2026-08741</td>
           <td>FMCSA</td>
           <td><span class="pill pill-added">added</span></td>
           <td><span class="pill pill-trn">transportation</span></td>
@@ -144,7 +249,7 @@
           <td>…AV commercial vehicles operating above SAE Level 3 require <span class="ins">real-time telemetry logging</span> and FMCSA safety certification…</td>
         </tr>
         <tr>
-          <td style="font-family:monospace;font-size:0.78rem;color:#93c5fd;">2026-07288</td>
+          <td class="doc">2026-08712</td>
           <td>FERC</td>
           <td><span class="pill pill-modified">modified</span></td>
           <td><span class="pill pill-enr">energy</span></td>
@@ -152,7 +257,7 @@
           <td>…transmission planning updated to include <span class="ins">climate scenario analysis</span> under Order 896; <span class="del">10-year</span> <span class="ins">20-year</span> planning horizon required…</td>
         </tr>
         <tr>
-          <td style="font-family:monospace;font-size:0.78rem;color:#93c5fd;">2026-07211</td>
+          <td class="doc">2026-08688</td>
           <td>OCC</td>
           <td><span class="pill pill-added">added</span></td>
           <td><span class="pill pill-fin">financial</span></td>
@@ -160,10 +265,10 @@
           <td>…national banks engaging in crypto-asset custody must maintain <span class="ins">segregated ledger accounts</span> with monthly attestation…</td>
         </tr>
         <tr>
-          <td style="font-family:monospace;font-size:0.78rem;color:#93c5fd;">2026-07188</td>
+          <td class="doc">2026-08651</td>
           <td>DOL</td>
           <td><span class="pill pill-modified">modified</span></td>
-          <td><span class="pill pill-fin">financial</span></td>
+          <td><span class="pill pill-lab">labor</span></td>
           <td>0.938</td>
           <td>…fiduciary duty standard expanded from <span class="del">ERISA plans only</span> to <span class="ins">all tax-advantaged retirement accounts</span>…</td>
         </tr>
@@ -173,44 +278,92 @@
 
   <!-- Domain donut -->
   <div class="card" id="domains">
-    <h2>Domain Breakdown — 2026-04-11 (312 changes)</h2>
-    <div style="position:relative;height:230px;">
+    <h2>Domain breakdown <span class="meta">328 changes</span></h2>
+    <div style="position:relative;height:240px;">
       <canvas id="domainChart"></canvas>
     </div>
   </div>
 
+  <!-- Diff-type bar -->
+  <div class="card" id="difftype">
+    <h2>Diff type <span class="meta">added · modified · removed</span></h2>
+    <div style="position:relative;height:240px;">
+      <canvas id="diffTypeChart"></canvas>
+    </div>
+  </div>
+
   <!-- Token-level diff example -->
-  <div class="card">
-    <h2>Token-Level Diff — Doc 2026-07541 (EPA, para 3 / 12)</h2>
+  <div class="card full">
+    <h2>Token-level diff <span class="meta">Doc 2026-08901 (EPA) · paragraph 3 / 12</span></h2>
     <div class="diff-meta">
-      <code>differ.py</code> · SequenceMatcher · diff_type: <span class="pill pill-modified" style="font-size:0.65rem;">modified</span>
+      <code>differ.py</code> · <code>SequenceMatcher</code> · diff_type:
+      <span class="pill pill-modified" style="font-size:0.65rem;">modified</span>
     </div>
     <div class="diff-box">
       <span class="eq">The primary national ambient air quality standard for fine particulate matter (PM2.5) shall not exceed </span><span class="del">thirty-five (35)</span><span class="ins">twenty-five (25)</span><span class="eq"> micrograms per cubic meter (μg/m³) as a 24-hour average. The annual standard is </span><span class="del">12</span><span class="ins">9</span><span class="eq"> μg/m³ for all Class I and Class II attainment areas.</span>
     </div>
     <div class="diff-tokens">
-      <span>🔴 <strong style="color:#f87171;">4</strong> deleted</span>
-      <span>🟢 <strong style="color:#4ade80;">4</strong> inserted</span>
-      <span>⬜ <strong style="color:#94a3b8;">46</strong> equal</span>
+      <span style="color:#fca5a5;">●&nbsp;<strong>4</strong> deleted</span>
+      <span style="color:#86efac;">●&nbsp;<strong>4</strong> inserted</span>
+      <span style="color:#94a3b8;">●&nbsp;<strong>46</strong> equal</span>
     </div>
   </div>
 
-  <!-- Scatter chart -->
-  <div class="card">
-    <h2>Regulatory Tone vs. Next-Day Market Return</h2>
-    <div style="font-size:0.75rem;color:#64748b;margin-bottom:0.75rem;">
-      n=184 events · FinBERT net tone on changed paragraphs · affected-sector ETF returns
+  <!-- Daily volume timeline -->
+  <div class="card full">
+    <h2>Daily change volume <span class="meta">last 14 business days</span></h2>
+    <div style="position:relative;height:220px;">
+      <canvas id="volumeChart"></canvas>
     </div>
-    <div id="scatter" style="height:240px;"></div>
   </div>
 
-  <!-- Beta chart -->
-  <div class="card">
-    <h2>Sector β — Tone Coefficient by Domain</h2>
-    <div style="font-size:0.75rem;color:#64748b;margin-bottom:0.75rem;">
-      OLS β: net tone → 1-day sector return · 95% CI · green = p &lt; 0.05
+  <!-- Confidence by domain -->
+  <div class="card full">
+    <h2>Avg classifier confidence by domain <span class="meta">last 30 days</span></h2>
+    <div style="position:relative;height:220px;">
+      <canvas id="confChart"></canvas>
     </div>
-    <div id="beta" style="height:240px;"></div>
+  </div>
+
+  <!-- API quick reference -->
+  <div class="card full" id="api">
+    <h2>API <span class="meta">localhost:8000 · OpenAPI at /docs</span></h2>
+    <div class="api-grid">
+      <div class="api-block">
+        <div class="endpoint"><span class="api-method">GET</span><span>/changes?pub_date=2026-04-24&amp;domain=financial</span></div>
+<pre><span class="c">// 200 OK</span>
+{
+  <span class="k">"total"</span>: <span class="n">42</span>,
+  <span class="k">"limit"</span>: <span class="n">50</span>,
+  <span class="k">"offset"</span>: <span class="n">0</span>,
+  <span class="k">"items"</span>: [
+    {
+      <span class="k">"id"</span>: <span class="n">18421</span>,
+      <span class="k">"pub_date"</span>: <span class="s">"2026-04-24"</span>,
+      <span class="k">"diff_type"</span>: <span class="s">"added"</span>,
+      <span class="k">"domain"</span>: <span class="s">"financial"</span>,
+      <span class="k">"domain_score"</span>: <span class="n">0.976</span>,
+      <span class="k">"agency"</span>: <span class="s">"SEC"</span>
+    }
+  ]
+}</pre>
+      </div>
+      <div class="api-block">
+        <div class="endpoint"><span class="api-method">GET</span><span>/stats</span></div>
+<pre><span class="c">// 200 OK</span>
+[
+  { <span class="k">"domain"</span>: <span class="s">"financial"</span>,
+    <span class="k">"total_changes"</span>: <span class="n">8421</span>,
+    <span class="k">"avg_score"</span>: <span class="n">0.94</span> },
+  { <span class="k">"domain"</span>: <span class="s">"environmental"</span>,
+    <span class="k">"total_changes"</span>: <span class="n">6188</span>,
+    <span class="k">"avg_score"</span>: <span class="n">0.95</span> },
+  { <span class="k">"domain"</span>: <span class="s">"healthcare"</span>,
+    <span class="k">"total_changes"</span>: <span class="n">4972</span>,
+    <span class="k">"avg_score"</span>: <span class="n">0.92</span> }
+]</pre>
+      </div>
+    </div>
   </div>
 
   <!-- Architecture -->
@@ -220,7 +373,7 @@
       <div class="arch-step">
         <div class="arch-icon">📄</div>
         <div class="arch-name">FR Bulk XML</div>
-        <div class="arch-sub">federalregister.gov · daily</div>
+        <div class="arch-sub">federalregister.gov · daily fetch</div>
       </div>
       <div class="arch-step">
         <div class="arch-icon">⚙️</div>
@@ -235,94 +388,133 @@
       <div class="arch-step">
         <div class="arch-icon">🗄️</div>
         <div class="arch-name">PostgreSQL</div>
-        <div class="arch-sub">changed_paragraphs table · indexed</div>
+        <div class="arch-sub">changed_paragraphs · indexed by pub_date</div>
       </div>
       <div class="arch-step">
         <div class="arch-icon">🚀</div>
         <div class="arch-name">FastAPI</div>
-        <div class="arch-sub">GET /changes · /domains · /stats</div>
+        <div class="arch-sub">/changes · /domains · /stats</div>
       </div>
     </div>
   </div>
 
 </main>
 
-<footer>reg-change-engine · astew24 · UC San Diego · 2026</footer>
+<footer>
+  reg-change-engine · <a href="https://github.com/astew24">astew24</a> · UC San Diego · 2026
+</footer>
 
-<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 <script>
-  // Domain donut (Chart.js)
+  const TEXT = '#cbd5e1', MUTED = '#94a3b8', GRID = '#1f2c47';
+  Chart.defaults.color = MUTED;
+  Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
+  // Domain donut
   new Chart(document.getElementById('domainChart'), {
     type: 'doughnut',
     data: {
       labels: ['Financial','Environmental','Healthcare','Transportation','Energy','Agriculture','Labor','Defense','Education','Telecom','Other'],
       datasets: [{
-        data: [78, 61, 47, 38, 29, 22, 18, 11, 9, 7, 12],
-        backgroundColor: ['#3b82f6','#22c55e','#a855f7','#6b7280','#f59e0b','#f97316','#ec4899','#ef4444','#14b8a6','#8b5cf6','#475569'],
-        borderWidth: 0,
-        hoverOffset: 4,
+        data: [82, 64, 49, 36, 30, 23, 19, 10, 8, 6, 11],
+        backgroundColor: ['#3b82f6','#22c55e','#a855f7','#94a3b8','#f59e0b','#f97316','#ec4899','#ef4444','#14b8a6','#8b5cf6','#475569'],
+        borderColor: '#0e182d',
+        borderWidth: 2,
+        hoverOffset: 6,
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      cutout: '68%',
+      cutout: '66%',
       plugins: {
-        legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 10, padding: 8 } }
+        legend: { position: 'right', labels: { color: MUTED, font: { size: 10 }, boxWidth: 10, padding: 7 } },
+        tooltip: { backgroundColor: '#0b1120', borderColor: GRID, borderWidth: 1 }
       }
     }
   });
 
-  // Seeded PRNG for reproducible scatter data
-  function mulberry32(seed) {
-    return function() {
-      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
-      var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
-      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    };
-  }
-  const rng = mulberry32(0xABCD1234);
-  const n = 184;
-  const toneVals = Array.from({length: n}, () => (rng() - 0.5) * 1.4);
-  const retVals  = toneVals.map(t => t * 3.1 + (rng() - 0.5) * 4.8);
-  const fitX = [-0.72, 0.72];
-  const fitY = fitX.map(x => x * 3.1);
-
-  Plotly.newPlot('scatter', [
-    { x: toneVals, y: retVals, mode: 'markers', type: 'scatter',
-      marker: { color: '#a78bfa', size: 9, opacity: 0.85 },
-      hovertemplate: 'Tone: %{x:.2f}<br>Return: %{y:.1f}%<extra></extra>',
-      name: 'Earnings events' },
-    { x: fitX, y: fitY, mode: 'lines', type: 'scatter',
-      line: { color: '#f87171', width: 2, dash: 'dash' },
-      name: 'OLS fit (β=0.031, p=0.032)' }
-  ], {
-    paper_bgcolor: '#1e293b', plot_bgcolor: '#1e293b',
-    font: { color: '#94a3b8', size: 11 },
-    xaxis: { title: 'Avg Net Tone (FinBERT positive − negative)', gridcolor: '#334155', zerolinecolor: '#475569' },
-    yaxis: { title: 'Next-Day Return (%)', gridcolor: '#334155', zerolinecolor: '#475569' },
-    legend: { bgcolor: '#0f172a', bordercolor: '#334155', borderwidth: 1 },
-    margin: { t: 20, r: 20, b: 50, l: 60 }
+  // Diff type stacked bar (per domain)
+  new Chart(document.getElementById('diffTypeChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Fin','Env','Hlt','Trn','Enr','Agr','Lab'],
+      datasets: [
+        { label: 'added',    data: [34, 22, 18, 14, 11,  9,  7], backgroundColor: '#22c55e' },
+        { label: 'modified', data: [38, 31, 24, 17, 14, 10,  8], backgroundColor: '#3b82f6' },
+        { label: 'removed',  data: [10, 11,  7,  5,  5,  4,  4], backgroundColor: '#ef4444' },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { stacked: true, grid: { color: GRID }, ticks: { color: MUTED } },
+        y: { stacked: true, grid: { color: GRID }, ticks: { color: MUTED } }
+      },
+      plugins: {
+        legend: { labels: { color: MUTED, font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { backgroundColor: '#0b1120', borderColor: GRID, borderWidth: 1 }
+      }
+    }
   });
 
-  // Beta chart
-  const tickers = ['NVDA','MSFT','AAPL','GOOGL','META','AMZN','JPM','GS'];
-  const betas   = [0.0312, 0.0218, 0.0189, 0.0271, 0.0198, -0.0089, 0.0244, 0.0301];
-  const errs    = [0.013, 0.010, 0.011, 0.012, 0.011, 0.011, 0.011, 0.012];
-  const colors  = betas.map((b,i) => [0,1,3,6,7].includes(i) ? '#4ade80' : '#475569');
-  Plotly.newPlot('beta', [{
-    x: tickers, y: betas, type: 'bar',
-    error_y: { type: 'data', array: errs.map(e=>e*1.96), visible: true, color: '#64748b' },
-    marker: { color: colors, cornerradius: 4 },
-    hovertemplate: '<b>%{x}</b><br>β = %{y:.4f}<extra></extra>'
-  }], {
-    paper_bgcolor: '#1e293b', plot_bgcolor: '#1e293b',
-    font: { color: '#94a3b8', size: 11 },
-    xaxis: { gridcolor: '#334155' },
-    yaxis: { title: 'β (tone coefficient)', gridcolor: '#334155', zerolinecolor: '#f87171' },
-    showlegend: false,
-    margin: { t: 20, r: 20, b: 40, l: 60 },
-    shapes: [{ type: 'line', x0: -0.5, x1: 7.5, y0: 0, y1: 0, line: { color: '#475569', width: 1 } }]
+  // Daily volume timeline
+  const days = ['04/07','04/08','04/09','04/10','04/11','04/14','04/15','04/16','04/17','04/18','04/21','04/22','04/23','04/24'];
+  const vol  = [276, 312, 258, 244, 312, 289, 271, 305, 318, 264, 296, 281, 310, 328];
+  new Chart(document.getElementById('volumeChart'), {
+    type: 'bar',
+    data: {
+      labels: days,
+      datasets: [{
+        label: 'Changed paragraphs',
+        data: vol,
+        backgroundColor: 'rgba(96,165,250,0.5)',
+        borderColor: '#60a5fa',
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { grid: { display: false }, ticks: { color: MUTED } },
+        y: { grid: { color: GRID }, ticks: { color: MUTED }, beginAtZero: true }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: '#0b1120', borderColor: GRID, borderWidth: 1 }
+      }
+    }
+  });
+
+  // Confidence by domain (horizontal bar)
+  new Chart(document.getElementById('confChart'), {
+    type: 'bar',
+    data: {
+      labels: ['environmental','financial','healthcare','energy','transportation','agriculture','labor','defense','education','telecom','other'],
+      datasets: [{
+        label: 'avg confidence',
+        data: [0.952, 0.948, 0.931, 0.919, 0.908, 0.894, 0.882, 0.871, 0.842, 0.811, 0.673],
+        backgroundColor: (ctx) => {
+          const v = ctx.raw;
+          if (v >= 0.90) return '#22c55e';
+          if (v >= 0.80) return '#60a5fa';
+          if (v >= 0.70) return '#f59e0b';
+          return '#ef4444';
+        },
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { min: 0.5, max: 1.0, grid: { color: GRID }, ticks: { color: MUTED, callback: v => v.toFixed(2) } },
+        y: { grid: { display: false }, ticks: { color: MUTED, font: { size: 11 } } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: '#0b1120', borderColor: GRID, borderWidth: 1, callbacks: { label: c => 'conf: ' + c.raw.toFixed(3) } }
+      }
+    }
   });
 </script>
 </body>
