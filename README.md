@@ -82,6 +82,7 @@ uvicorn app:app --reload
 | `GET` | `/changes` | Paginated list of changed paragraphs. Filter by `pub_date` and `domain`. |
 | `GET` | `/changes/{id}` | Single change record |
 | `GET` | `/domains` | Count of changes per regulatory domain |
+| `GET` | `/stats` | Total changes + avg classifier confidence grouped by domain |
 | `GET` | `/publications` | List of ingested publication dates |
 | `GET` | `/health` | Liveness + DB connectivity check |
 
@@ -127,6 +128,8 @@ changed_paragraphs (
 - **Zero-shot NLI** means the classifier works out-of-the-box without labelled regulatory training data. Swap `CLASSIFIER_MODEL` for a fine-tuned checkpoint to boost accuracy.
 - **Bulk XML** (not the JSON API) is used because it contains the full text of every document in one atomic download, making diffing reliable.
 - **Caching** raw XML to disk ensures reruns don't re-fetch, and preserves the exact snapshot for auditing.
+- **Batch inference** in `classify_batch()` passes all snippets to the HuggingFace pipeline in one call — meaningfully faster than looping `classify_text()` per paragraph on large ingestion runs.
+- **Min-confidence fallback**: predictions below the configurable `min_confidence` threshold are returned as `"other"` so the API doesn't surface confidently-mislabelled domains for ambiguous text.
 
 ---
 
