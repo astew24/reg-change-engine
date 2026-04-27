@@ -3,645 +3,678 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>reg-change-engine — what changed in U.S. federal regulations today</title>
-  <meta name="description" content="A daily-updated dashboard showing every paragraph that was added, removed, or modified in the U.S. Federal Register, classified by regulatory domain.">
+  <title>reg-change-engine / what changed in U.S. federal regulations today</title>
+  <meta name="description" content="A daily diff of every paragraph added, removed, or modified in the U.S. Federal Register, classified by regulatory domain.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%9C%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
-      --bg-0: #07091a;
-      --bg-1: #0d1226;
-      --panel: rgba(20, 26, 50, 0.7);
-      --panel-solid: #0f1530;
-      --panel-2: #0a0e22;
-      --border: rgba(99, 119, 175, 0.18);
-      --border-strong: rgba(99, 119, 175, 0.32);
-      --text: #e8ecf6;
-      --text-2: #c4cbe0;
-      --muted: #8b94b4;
-      --dim: #5e6789;
-      --accent: #7aa2ff;
-      --accent-2: #a78bfa;
-      --accent-3: #34d399;
-      --green: #34d399;
-      --red: #f87171;
-      --amber: #fbbf24;
+      /* OKLCH, all neutrals tinted warm toward the brand hue */
+      --paper:        oklch(98.6% 0.004 80);
+      --paper-deep:   oklch(96.5% 0.006 80);
+      --paper-rule:   oklch(91% 0.007 80);
+      --ink:          oklch(20% 0.014 60);
+      --ink-2:        oklch(32% 0.012 60);
+      --ink-3:        oklch(46% 0.012 65);
+      --ink-4:        oklch(56% 0.012 70);
+      --ink-quiet:    oklch(72% 0.008 70);
+      --accent:       oklch(45% 0.155 28);   /* deep iron red, used sparingly */
+      --accent-soft:  oklch(94% 0.025 28);
+      --add:          oklch(45% 0.115 152);
+      --add-soft:     oklch(95% 0.045 152);
+      --remove:       oklch(45% 0.155 28);
+      --remove-soft:  oklch(95% 0.040 28);
+      --modify:       oklch(40% 0.060 240);
+      --modify-soft:  oklch(94% 0.030 240);
+
+      --serif: 'Newsreader', 'Iowan Old Style', 'Source Serif Pro', Georgia, 'Times New Roman', serif;
+      --sans:  ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      --mono:  'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background:
-        radial-gradient(1200px 700px at 85% -10%, rgba(122, 162, 255, 0.18), transparent 60%),
-        radial-gradient(900px 600px at -5% 5%, rgba(167, 139, 250, 0.16), transparent 60%),
-        radial-gradient(700px 500px at 50% 100%, rgba(52, 211, 153, 0.08), transparent 60%),
-        var(--bg-0);
-      color: var(--text);
+      font-family: var(--sans);
+      background: var(--paper);
+      color: var(--ink-2);
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
-      letter-spacing: -0.005em;
+      font-feature-settings: 'kern', 'ss01';
+      font-kerning: normal;
+      line-height: 1.55;
+    }
+
+    /* Tabular figures for any data context */
+    table, .num, .stat, .doc, code, pre { font-variant-numeric: tabular-nums; }
+
+    /* Visible keyboard focus, never removed */
+    a:focus-visible, button:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+      border-radius: 2px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      html { scroll-behavior: auto; }
+    }
+
+    /* ---------- Masthead ---------- */
+    .masthead {
+      border-bottom: 1px solid var(--paper-rule);
+    }
+    .masthead-inner {
+      max-width: 1080px; margin: 0 auto;
+      padding: 1rem 1.75rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    }
+    .mark {
+      font-family: var(--serif);
+      font-weight: 700; font-size: 1.05rem;
+      color: var(--ink); letter-spacing: -0.01em;
+    }
+    .mark span { color: var(--accent); }
+    .masthead-meta {
+      display: flex; align-items: center; gap: 1.25rem;
+      font-size: 0.78rem; color: var(--ink-4);
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }
+    .masthead-meta a {
+      color: var(--ink-3); text-decoration: none;
+      border-bottom: 1px solid var(--paper-rule);
+      transition: color 180ms cubic-bezier(0.16, 1, 0.3, 1), border-color 180ms;
+    }
+    .masthead-meta a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ---------- Issue strip ---------- */
+    .issue {
+      max-width: 1080px; margin: 0 auto;
+      padding: 1rem 1.75rem 0;
+      display: flex; flex-wrap: wrap; gap: 1rem 2.5rem;
+      font-size: 0.74rem; color: var(--ink-4);
+      letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .issue strong { color: var(--ink); font-weight: 600; }
+    .issue .live::before {
+      content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--add); margin-right: 0.45rem; vertical-align: 1px;
+    }
+
+    /* ---------- Hero ---------- */
+    .hero {
+      max-width: 1080px; margin: 0 auto;
+      padding: 2.5rem 1.75rem 3rem;
+      border-bottom: 1px solid var(--paper-rule);
+    }
+    .hero h1 {
+      font-family: var(--serif);
+      font-weight: 600;
+      font-size: clamp(2.4rem, 5.2vw, 4.4rem);
+      line-height: 0.98;
+      letter-spacing: -0.025em;
+      color: var(--ink);
+      max-width: 18ch;
+      text-wrap: balance;
+      margin-bottom: 1.5rem;
+    }
+    .hero h1 em {
+      font-style: italic;
+      font-weight: 500;
+      color: var(--accent);
+    }
+    .hero .standfirst {
+      font-family: var(--serif);
+      font-size: 1.2rem;
+      line-height: 1.55;
+      color: var(--ink-2);
+      max-width: 60ch;
+      text-wrap: pretty;
+    }
+    .hero .byline {
+      margin-top: 1.75rem;
+      font-size: 0.78rem; color: var(--ink-4);
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .hero .byline a {
+      color: var(--ink-2); text-decoration: none;
+      border-bottom: 1px solid var(--ink-4);
+    }
+    .hero .byline a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ---------- Article container ---------- */
+    article {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 1.75rem;
+    }
+
+    section { padding: 3.25rem 0; border-bottom: 1px solid var(--paper-rule); }
+    section:last-of-type { border-bottom: none; }
+
+    .section-head {
+      display: grid; grid-template-columns: 12rem 1fr; gap: 2.5rem;
+      margin-bottom: 1.75rem; align-items: baseline;
+    }
+    .kicker {
+      font-size: 0.72rem; color: var(--accent);
+      letter-spacing: 0.14em; text-transform: uppercase;
+      font-weight: 600;
+    }
+    h2 {
+      font-family: var(--serif);
+      font-weight: 600;
+      font-size: clamp(1.5rem, 2.4vw, 1.95rem);
+      line-height: 1.15;
+      color: var(--ink);
+      letter-spacing: -0.012em;
+      text-wrap: balance;
+    }
+    .deck {
+      grid-column: 2;
+      font-size: 1rem;
+      color: var(--ink-3);
+      max-width: 62ch;
+      line-height: 1.6;
+      text-wrap: pretty;
+      margin-top: 0.55rem;
+    }
+
+    /* ---------- Prose ---------- */
+    .prose p { font-size: 1.02rem; max-width: 62ch; color: var(--ink-2); line-height: 1.7; }
+    .prose p + p { margin-top: 1rem; }
+    .prose b { color: var(--ink); font-weight: 600; }
+    .prose code { font-family: var(--mono); font-size: 0.88em; color: var(--accent); }
+
+    /* ---------- Lede metrics (replaces hero-metric template) ---------- */
+    .lede {
+      display: grid; grid-template-columns: 12rem 1fr; gap: 2.5rem;
+      align-items: baseline;
+    }
+    .lede .figures {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      border-top: 1px solid var(--paper-rule);
+      border-bottom: 1px solid var(--paper-rule);
+    }
+    .figure {
+      padding: 1.4rem 1.5rem 1.5rem 0;
+      border-right: 1px solid var(--paper-rule);
+    }
+    .figure:last-child { border-right: none; padding-right: 0; }
+    .figure .num {
+      font-family: var(--serif);
+      font-size: 2.4rem;
+      font-weight: 500;
+      color: var(--ink);
+      letter-spacing: -0.025em;
+      line-height: 1;
+    }
+    .figure .num .unit { font-size: 1rem; color: var(--ink-4); margin-left: 0.2rem; }
+    .figure .label {
+      margin-top: 0.7rem;
+      font-size: 0.84rem; color: var(--ink-3);
+      max-width: 30ch; line-height: 1.5;
+    }
+
+    /* ---------- Table ---------- */
+    .table-scroll { overflow-x: auto; margin: 0 -1.75rem; padding: 0 1.75rem; }
+    .changes-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin-top: 0.5rem; min-width: 720px; }
+    .changes-table thead th {
+      text-align: left;
+      padding: 0.65rem 1rem 0.65rem 0;
+      font-weight: 600;
+      font-size: 0.72rem; color: var(--ink-4);
+      letter-spacing: 0.08em; text-transform: uppercase;
+      border-bottom: 1px solid var(--ink);
+    }
+    .changes-table tbody td {
+      padding: 0.95rem 1rem 0.95rem 0;
+      border-bottom: 1px solid var(--paper-rule);
+      color: var(--ink-2);
+      vertical-align: top;
+      line-height: 1.55;
+    }
+    .changes-table tbody tr:hover td { background: var(--paper-deep); }
+    .changes-table .doc { font-family: var(--mono); font-size: 0.82rem; color: var(--ink-3); white-space: nowrap; }
+    .changes-table .agency { font-weight: 600; color: var(--ink); }
+    .changes-table .conf { font-family: var(--mono); font-size: 0.86rem; color: var(--ink-3); }
+
+    /* ---------- Tag ---------- */
+    .tag {
+      display: inline-block; padding: 0.16rem 0.55rem;
+      font-size: 0.74rem; font-weight: 500;
+      letter-spacing: 0.02em;
+      border-radius: 2px;
+      white-space: nowrap;
+    }
+    .tag-add    { background: var(--add-soft);    color: var(--add); }
+    .tag-remove { background: var(--remove-soft); color: var(--remove); }
+    .tag-modify { background: var(--modify-soft); color: var(--modify); }
+
+    .domain-dot {
+      display: inline-block; width: 7px; height: 7px;
+      border-radius: 50%; margin-right: 0.5rem; vertical-align: 1px;
+    }
+
+    /* ---------- Two-column data ---------- */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start; }
+    .chart-block .chart-title {
+      font-family: var(--serif);
+      font-size: 1.05rem; font-weight: 600;
+      color: var(--ink); margin-bottom: 0.35rem;
+    }
+    .chart-block .chart-sub {
+      font-size: 0.85rem; color: var(--ink-3);
+      max-width: 50ch; margin-bottom: 1.1rem; line-height: 1.55;
+    }
+
+    /* ---------- Diff block (one of the few things that earns a container) ---------- */
+    .diff-block {
+      background: var(--paper-deep);
+      padding: 1.5rem 1.75rem;
+      margin: 1rem 0 0.5rem;
+      border-radius: 3px;
+    }
+    .diff-meta {
+      font-family: var(--mono); font-size: 0.78rem;
+      color: var(--ink-3); margin-bottom: 0.85rem;
+      display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;
+    }
+    .diff-meta b { color: var(--ink); font-weight: 500; }
+    .diff-text {
+      font-family: var(--serif);
+      font-size: 1.08rem; line-height: 1.85;
+      color: var(--ink-2);
+    }
+    .del {
+      color: var(--remove);
+      background: var(--remove-soft);
+      padding: 0 0.25rem; border-radius: 2px;
+      text-decoration: line-through;
+      text-decoration-color: oklch(60% 0.10 28);
+      text-decoration-thickness: 1px;
+    }
+    .ins {
+      color: var(--add);
+      background: var(--add-soft);
+      padding: 0 0.25rem; border-radius: 2px;
+    }
+    .diff-tally {
+      margin-top: 1rem; font-size: 0.82rem;
+      color: var(--ink-3);
+      display: flex; gap: 1.5rem; flex-wrap: wrap;
+      font-family: var(--mono);
+    }
+    .diff-tally b { color: var(--ink); font-weight: 600; }
+
+    /* ---------- API blocks ---------- */
+    .api-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1.75rem; }
+    .api-block .endpoint {
+      font-family: var(--mono); font-size: 0.85rem;
+      color: var(--ink); margin-bottom: 0.65rem;
+      padding-bottom: 0.55rem;
+      border-bottom: 1px solid var(--paper-rule);
+    }
+    .api-block .endpoint .verb {
+      color: var(--add); font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .api-block pre {
+      font-family: var(--mono); font-size: 0.8rem;
+      color: var(--ink-2); line-height: 1.7;
+      background: var(--paper-deep);
+      padding: 1.1rem 1.25rem;
+      border-radius: 3px;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .k { color: var(--modify); }
+    .s { color: var(--add); }
+    .n { color: oklch(50% 0.14 60); }
+    .c { color: var(--ink-4); font-style: italic; }
+
+    /* ---------- Pipeline ---------- */
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0;
+      counter-reset: step;
+    }
+    .step {
+      counter-increment: step;
+      padding: 1.3rem 1.4rem 1.3rem 0;
+      border-right: 1px solid var(--paper-rule);
+      position: relative;
+    }
+    .step:last-child { border-right: none; padding-right: 0; }
+    .step::before {
+      content: counter(step, decimal-leading-zero);
+      font-family: var(--mono); font-size: 0.75rem;
+      color: var(--accent); display: block;
+      margin-bottom: 0.5rem; letter-spacing: 0.04em;
+    }
+    .step .name {
+      font-family: var(--serif);
+      font-size: 1.02rem; font-weight: 600;
+      color: var(--ink); margin-bottom: 0.35rem;
+    }
+    .step .what {
+      font-size: 0.82rem; color: var(--ink-3);
       line-height: 1.5;
     }
 
-    /* subtle dot grid background */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image: radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px);
-      background-size: 22px 22px;
-      pointer-events: none;
-      z-index: 0;
+    /* ---------- Glossary ---------- */
+    .glossary { display: grid; grid-template-columns: 1fr 1fr; column-gap: 3rem; row-gap: 1.4rem; }
+    .glossary dt {
+      font-family: var(--serif);
+      font-size: 1rem; font-weight: 600;
+      color: var(--ink); margin-bottom: 0.25rem;
+    }
+    .glossary dt code {
+      font-family: var(--mono); font-size: 0.86rem; color: var(--accent);
+      font-weight: 500;
+    }
+    .glossary dd {
+      font-size: 0.92rem; color: var(--ink-3);
+      line-height: 1.6; max-width: 50ch;
     }
 
-    /* nav */
-    nav {
-      position: sticky; top: 0; z-index: 50;
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      background: rgba(7, 9, 26, 0.7);
-      border-bottom: 1px solid var(--border);
+    /* ---------- Colophon ---------- */
+    .colophon {
+      max-width: 1080px; margin: 0 auto;
+      padding: 2.25rem 1.75rem 3rem;
+      border-top: 1px solid var(--paper-rule);
+      display: flex; flex-wrap: wrap;
+      justify-content: space-between; align-items: baseline; gap: 1rem;
+      font-size: 0.82rem; color: var(--ink-4);
     }
-    nav .nav-inner {
-      max-width: 1180px; margin: 0 auto;
-      padding: 0.85rem 1.5rem;
-      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-    }
-    .brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 0.95rem; color: var(--text); }
-    .brand-mark {
-      width: 26px; height: 26px; border-radius: 7px;
-      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
-      display: grid; place-items: center; font-size: 0.85rem;
-      box-shadow: 0 4px 14px rgba(122,162,255,0.4);
-    }
-    .nav-links { display: flex; gap: 1.25rem; font-size: 0.85rem; }
-    .nav-links a { color: var(--muted); text-decoration: none; transition: color 0.15s; }
-    .nav-links a:hover { color: var(--text); }
-    .nav-cta {
-      font-size: 0.82rem; color: var(--text);
-      padding: 0.4rem 0.85rem; border-radius: 7px;
-      background: rgba(122, 162, 255, 0.12);
-      border: 1px solid rgba(122, 162, 255, 0.3);
-      text-decoration: none; transition: all 0.15s;
-    }
-    .nav-cta:hover { background: rgba(122, 162, 255, 0.22); }
+    .colophon a { color: var(--ink-3); text-decoration: none; border-bottom: 1px solid var(--paper-rule); }
+    .colophon a:hover { color: var(--accent); border-bottom-color: var(--accent); }
 
-    /* hero */
-    header {
-      position: relative; z-index: 1;
-      padding: 4rem 1.5rem 2.5rem;
-      max-width: 1180px;
-      margin: 0 auto;
-    }
-    .badge-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
-    .badge {
-      display: inline-flex; align-items: center; gap: 0.45rem;
-      background: rgba(122, 162, 255, 0.12); color: #b9caff;
-      font-size: 0.72rem; font-weight: 600;
-      padding: 0.3rem 0.7rem; border-radius: 9999px;
-      letter-spacing: 0.02em;
-      border: 1px solid rgba(122, 162, 255, 0.25);
-    }
-    .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); animation: pulse 2.2s ease-in-out infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-    .badge.muted { background: rgba(148, 163, 184, 0.08); color: var(--muted); border-color: rgba(148, 163, 184, 0.15); }
-    .badge.warn  { background: rgba(251, 191, 36, 0.10); color: #fcd34d; border-color: rgba(251, 191, 36, 0.25); }
-
-    h1 {
-      font-size: clamp(2rem, 4.5vw, 3.1rem);
-      font-weight: 800; color: #f4f6fc;
-      margin-bottom: 0.85rem; letter-spacing: -0.035em;
-      line-height: 1.05;
-    }
-    h1 .grad {
-      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 60%, #f0abfc 100%);
-      -webkit-background-clip: text; background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .subtitle { color: var(--text-2); font-size: 1.05rem; max-width: 720px; line-height: 1.6; margin-bottom: 0.5rem; }
-    .subtitle-2 { color: var(--muted); font-size: 0.95rem; max-width: 720px; line-height: 1.6; }
-    .links { margin-top: 1.6rem; display: flex; gap: 0.7rem; flex-wrap: wrap; }
-    .links a {
-      color: var(--text); font-size: 0.88rem; text-decoration: none;
-      padding: 0.55rem 1rem; border-radius: 8px; font-weight: 500;
-      border: 1px solid var(--border-strong); background: rgba(122, 162, 255, 0.06);
-      transition: all 0.15s ease;
-      display: inline-flex; align-items: center; gap: 0.4rem;
-    }
-    .links a:hover { background: rgba(122, 162, 255, 0.16); border-color: rgba(122, 162, 255, 0.5); transform: translateY(-1px); }
-    .links a.primary { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%); border-color: transparent; color: #0b0f24; font-weight: 600; }
-    .links a.primary:hover { box-shadow: 0 8px 24px rgba(122,162,255,0.35); }
-
-    /* main */
-    main {
-      position: relative; z-index: 1;
-      max-width: 1180px; margin: 0.5rem auto 2rem;
-      padding: 0 1.5rem;
-      display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem;
-    }
-
-    /* explainer banner */
-    .explainer {
-      grid-column: 1 / -1;
-      background: linear-gradient(135deg, rgba(122,162,255,0.08), rgba(167,139,250,0.06));
-      border: 1px solid var(--border-strong); border-radius: 1rem;
-      padding: 1.5rem 1.65rem;
-      display: grid; grid-template-columns: auto 1fr; gap: 1.25rem; align-items: start;
-    }
-    .explainer .icon-box {
-      width: 42px; height: 42px; border-radius: 10px;
-      background: rgba(122, 162, 255, 0.14);
-      border: 1px solid rgba(122, 162, 255, 0.3);
-      display: grid; place-items: center; font-size: 1.2rem;
-    }
-    .explainer h3 { font-size: 1.05rem; font-weight: 600; color: var(--text); margin-bottom: 0.35rem; }
-    .explainer p { color: var(--text-2); font-size: 0.92rem; line-height: 1.65; }
-    .explainer p + p { margin-top: 0.5rem; }
-    .explainer code { font-family: 'JetBrains Mono', monospace; font-size: 0.84em; color: #b9caff; background: rgba(122,162,255,0.10); padding: 0.05rem 0.35rem; border-radius: 4px; }
-
-    /* card */
-    .card {
-      background: var(--panel);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 1px solid var(--border); border-radius: 1rem;
-      padding: 1.5rem;
-      transition: border-color 0.2s ease;
-    }
-    .card:hover { border-color: var(--border-strong); }
-    .card.full { grid-column: 1 / -1; }
-    .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.4rem; }
-    .card h2 {
-      font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em;
-      color: var(--accent); font-weight: 700;
-    }
-    .card .meta { color: var(--dim); font-weight: 500; font-size: 0.74rem; font-family: 'JetBrains Mono', monospace; }
-    .card .caption {
-      color: var(--muted); font-size: 0.86rem; line-height: 1.55;
-      margin-bottom: 1.1rem; max-width: 700px;
-    }
-    .card .caption b { color: var(--text-2); font-weight: 600; }
-
-    /* stats */
-    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem; margin-top: 0.75rem; }
-    .stat {
-      background: var(--panel-2);
-      border: 1px solid var(--border); border-radius: 0.75rem;
-      padding: 1.1rem 1.25rem;
-      transition: transform 0.15s ease, border-color 0.15s ease;
-    }
-    .stat:hover { transform: translateY(-2px); border-color: var(--border-strong); }
-    .stat-val { font-size: 1.85rem; font-weight: 700; color: #f4f6fc; letter-spacing: -0.025em; line-height: 1; }
-    .stat-lbl { font-size: 0.72rem; color: var(--dim); margin-top: 0.45rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
-    .stat-help { font-size: 0.78rem; color: var(--muted); margin-top: 0.4rem; line-height: 1.4; }
-    .stat-delta { font-size: 0.74rem; color: var(--green); margin-top: 0.3rem; font-weight: 500; }
-    .stat-delta.neg { color: var(--red); }
-
-    /* table */
-    table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
-    th {
-      color: var(--dim); text-align: left; padding: 0.55rem 0.85rem;
-      font-weight: 600; border-bottom: 1px solid var(--border);
-      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
-    }
-    td { padding: 0.7rem 0.85rem; border-bottom: 1px solid rgba(99, 119, 175, 0.1); color: var(--text-2); vertical-align: top; line-height: 1.5; }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(122, 162, 255, 0.04); }
-    .doc { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--accent); white-space: nowrap; }
-    .agency { font-weight: 600; color: var(--text); }
-
-    /* pills */
-    .pill {
-      display: inline-flex; align-items: center; gap: 0.3rem;
-      padding: 0.18rem 0.6rem; border-radius: 9999px;
-      font-size: 0.7rem; font-weight: 600; white-space: nowrap;
-    }
-    .pill::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.85; }
-    .pill-added    { background: rgba(52, 211, 153, 0.14);  color: #6ee7b7; }
-    .pill-removed  { background: rgba(248, 113, 113, 0.14); color: #fca5a5; }
-    .pill-modified { background: rgba(122, 162, 255, 0.16); color: #b9caff; }
-    .pill-env  { background: rgba(52, 211, 153, 0.14);  color: #6ee7b7; }
-    .pill-fin  { background: rgba(122, 162, 255, 0.16); color: #b9caff; }
-    .pill-hlt  { background: rgba(167, 139, 250, 0.16); color: #ddd6fe; }
-    .pill-agr  { background: rgba(249, 115, 22, 0.16);  color: #fdba74; }
-    .pill-trn  { background: rgba(148, 163, 184, 0.16); color: #d6d3d1; }
-    .pill-enr  { background: rgba(251, 191, 36, 0.16);  color: #fde68a; }
-    .pill-lab  { background: rgba(236, 72, 153, 0.16);  color: #f9a8d4; }
-
-    /* diff */
-    .diff-box {
-      background: var(--panel-2); border: 1px solid var(--border);
-      border-radius: 0.7rem; padding: 1.15rem 1.25rem;
-      font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
-      line-height: 1.85; overflow-x: auto; word-break: break-word;
-    }
-    .del {
-      color: #fca5a5; background: rgba(248, 113, 113, 0.12);
-      border-radius: 3px; padding: 0.05rem 0.35rem;
-      text-decoration: line-through; text-decoration-color: rgba(248, 113, 113, 0.55);
-    }
-    .ins { color: #6ee7b7; background: rgba(52, 211, 153, 0.12); border-radius: 3px; padding: 0.05rem 0.35rem; }
-    .eq  { color: var(--muted); }
-    .diff-meta { margin-bottom: 0.85rem; font-size: 0.82rem; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-    .diff-meta code { color: var(--accent); font-family: 'JetBrains Mono', monospace; background: rgba(122,162,255,0.08); padding: 0.05rem 0.4rem; border-radius: 4px; font-size: 0.78rem; }
-    .diff-tokens { margin-top: 1rem; display: flex; gap: 1.5rem; font-size: 0.78rem; color: var(--muted); flex-wrap: wrap; }
-    .diff-tokens span { display: inline-flex; align-items: center; gap: 0.4rem; }
-
-    /* arch */
-    .arch-grid {
-      display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.7rem;
-      align-items: stretch; position: relative;
-    }
-    .arch-step {
-      background: var(--panel-2); border: 1px solid var(--border);
-      border-radius: 0.7rem; padding: 1rem 0.6rem;
-      transition: transform 0.18s ease, border-color 0.18s ease;
-      text-align: center;
-    }
-    .arch-step:hover { transform: translateY(-3px); border-color: rgba(122, 162, 255, 0.4); }
-    .arch-icon { font-size: 1.45rem; margin-bottom: 0.45rem; }
-    .arch-name { font-size: 0.84rem; color: var(--text); font-weight: 600; }
-    .arch-sub  { font-size: 0.7rem; color: var(--dim); margin-top: 0.3rem; line-height: 1.4; }
-    .arch-arrow {
-      position: relative;
-      color: var(--dim); font-size: 1.2rem;
-      align-self: center; text-align: center;
-    }
-
-    /* api */
-    .api-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .api-block {
-      background: var(--panel-2); border: 1px solid var(--border);
-      border-radius: 0.7rem; overflow: hidden;
-    }
-    .api-block .endpoint {
-      padding: 0.7rem 1rem; border-bottom: 1px solid var(--border);
-      font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
-      display: flex; align-items: center; gap: 0.6rem;
-      background: rgba(122,162,255,0.04);
-      color: var(--text-2);
-    }
-    .api-method {
-      background: rgba(52, 211, 153, 0.18); color: #6ee7b7;
-      padding: 0.12rem 0.5rem; border-radius: 5px;
-      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;
-    }
-    .api-block pre {
-      padding: 1rem 1.15rem; font-family: 'JetBrains Mono', monospace;
-      font-size: 0.76rem; color: var(--text-2); line-height: 1.7;
-      overflow-x: auto; white-space: pre;
-    }
-    .k { color: #b9caff; }
-    .s { color: #6ee7b7; }
-    .n { color: #fde68a; }
-    .c { color: var(--dim); font-style: italic; }
-
-    /* glossary */
-    .gloss-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.85rem; }
-    .gloss { background: var(--panel-2); border: 1px solid var(--border); border-radius: 0.65rem; padding: 0.95rem 1.1rem; }
-    .gloss dt { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: var(--accent); font-weight: 600; margin-bottom: 0.3rem; }
-    .gloss dd { color: var(--muted); font-size: 0.84rem; line-height: 1.55; }
-
-    /* footer */
-    footer {
-      position: relative; z-index: 1;
-      text-align: center; padding: 2.5rem 1rem; color: var(--dim); font-size: 0.85rem;
-      border-top: 1px solid var(--border); margin-top: 1.5rem;
-    }
-    footer a { color: var(--muted); text-decoration: none; }
-    footer a:hover { color: var(--accent); }
-
-    @media (max-width: 880px) {
-      main { grid-template-columns: 1fr; }
-      .stat-grid { grid-template-columns: repeat(2, 1fr); }
-      .arch-grid { grid-template-columns: repeat(2, 1fr); }
-      .api-grid { grid-template-columns: 1fr; }
-      .gloss-grid { grid-template-columns: 1fr; }
-      .nav-links { display: none; }
-      .explainer { grid-template-columns: 1fr; }
+    @media (max-width: 820px) {
+      .section-head, .lede { grid-template-columns: 1fr; gap: 0.5rem; }
+      .deck { grid-column: 1; }
+      .lede .figures { grid-template-columns: 1fr; }
+      .figure { border-right: none; border-bottom: 1px solid var(--paper-rule); padding: 1.1rem 0; }
+      .figure:last-child { border-bottom: none; }
+      .two-col, .api-pair { grid-template-columns: 1fr; gap: 2rem; }
+      .pipeline { grid-template-columns: 1fr 1fr; }
+      .step { border-right: none; border-bottom: 1px solid var(--paper-rule); padding-right: 0; padding-bottom: 1rem; margin-bottom: 1rem; }
+      .glossary { grid-template-columns: 1fr; }
+      .masthead-meta { font-size: 0.7rem; gap: 0.85rem; }
     }
   </style>
 </head>
 <body>
 
-<nav>
-  <div class="nav-inner">
-    <div class="brand">
-      <span class="brand-mark">📜</span>
-      <span>reg-change-engine</span>
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="mark">reg<span>·</span>change<span>·</span>engine</div>
+    <div class="masthead-meta">
+      <span>Vol. 1, No. 24</span>
+      <a href="https://github.com/astew24/reg-change-engine">Source</a>
+      <a href="https://www.federalregister.gov/reader-aids/developer-resources/rest-api">FR API</a>
     </div>
-    <div class="nav-links">
-      <a href="#what">What it does</a>
-      <a href="#changes">Changes</a>
-      <a href="#diff">Diff</a>
-      <a href="#api">API</a>
-      <a href="#arch">Architecture</a>
-    </div>
-    <a class="nav-cta" href="https://github.com/astew24/reg-change-engine">View on GitHub →</a>
-  </div>
-</nav>
-
-<header>
-  <div class="badge-row">
-    <span class="badge"><span class="dot"></span>Live demo</span>
-    <span class="badge muted">Last ingestion · 2026-04-24</span>
-    <span class="badge warn">Sample data — page renders example output, not a live DB</span>
-  </div>
-  <h1>What changed in U.S.<br><span class="grad">federal regulations</span> today?</h1>
-  <p class="subtitle">
-    <b style="color:var(--text);">reg-change-engine</b> downloads the U.S. Federal Register's daily bulk XML, computes a
-    word-level diff against the previous business day, and classifies every changed paragraph
-    into one of 11 regulatory domains using a zero-shot DistilRoBERTa model.
-  </p>
-  <p class="subtitle-2">
-    The result is a structured, queryable feed of <em>exactly</em> which words were added, removed, or
-    modified across every federal rule — useful for compliance teams, policy researchers, and
-    anyone who needs to know what regulators changed before someone else does.
-  </p>
-  <div class="links">
-    <a class="primary" href="https://github.com/astew24/reg-change-engine">View source →</a>
-    <a href="#what">How it works</a>
-    <a href="#api">API examples</a>
-    <a href="https://www.federalregister.gov/reader-aids/developer-resources/rest-api">Federal Register API</a>
   </div>
 </header>
 
-<main>
+<div class="issue">
+  <span><strong>Issue 2026-04-24</strong></span>
+  <span class="live">Pipeline live</span>
+  <span>Sample data shown below</span>
+</div>
 
-  <!-- What it does explainer -->
-  <div class="explainer" id="what">
-    <div class="icon-box">📖</div>
-    <div>
-      <h3>New here? Read this first.</h3>
-      <p>
-        The <b>Federal Register</b> is the U.S. government's daily journal of every new rule,
-        proposed rule, and notice published by federal agencies (EPA, SEC, CMS, etc.).
-        Every business day, it publishes thousands of paragraphs of regulatory text.
-      </p>
-      <p>
-        This project diffs <em>today's</em> publication against <em>yesterday's</em> at the
-        word level — surfacing every single token that was <code>added</code>,
-        <code>removed</code>, or <code>modified</code>. Each changed paragraph is then
-        classified into a regulatory domain (e.g. <em>environmental</em>, <em>financial</em>,
-        <em>healthcare</em>) so you can filter the feed to whatever you actually care about.
-      </p>
-      <p>
-        The dashboard below is what a daily summary looks like. Below the metrics you'll find
-        the actual change records, a token-level diff example, classifier performance per
-        domain, and the API you'd query to integrate this feed into your own systems.
-      </p>
+<section class="hero">
+  <h1>What changed in U.S. <em>federal regulations</em> today.</h1>
+  <p class="standfirst">
+    A daily, word-level diff of every paragraph published in the Federal Register, classified by regulatory domain. Compliance work usually waits for someone to read 200 pages of XML; this reads them for you and tells you what is actually new.
+  </p>
+  <p class="byline">
+    Built by <a href="https://github.com/astew24">Andrew Stewart</a> · Python, FastAPI, PostgreSQL, DistilRoBERTa
+  </p>
+</section>
+
+<article>
+
+  <section>
+    <div class="lede">
+      <div class="kicker">Today, in figures</div>
+      <div class="figures">
+        <div class="figure">
+          <div class="num">2,311</div>
+          <div class="label">Paragraphs read from today's bulk XML.</div>
+        </div>
+        <div class="figure">
+          <div class="num">328<span class="unit"> / 14.2%</span></div>
+          <div class="label">Differed from the previous business day.</div>
+        </div>
+        <div class="figure">
+          <div class="num">93.7<span class="unit">%</span></div>
+          <div class="label">Mean classifier confidence across the changed paragraphs.</div>
+        </div>
+      </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Stat row -->
-  <div class="card full">
-    <div class="card-head">
+  <section>
+    <div class="section-head">
+      <div class="kicker">The method</div>
       <div>
-        <h2>Today at a glance</h2>
-      </div>
-      <div class="meta">2026-04-24 · 1 publication</div>
-    </div>
-    <p class="caption">
-      A snapshot of the most recent ingestion run. <b>Paragraphs diffed</b> is the total
-      pulled from the Federal Register XML; <b>changed paragraphs</b> is how many of those
-      actually differed from the previous business day.
-    </p>
-    <div class="stat-grid">
-      <div class="stat">
-        <div class="stat-val">2,311</div>
-        <div class="stat-lbl">Paragraphs diffed</div>
-        <div class="stat-help">All paragraphs read from today's bulk XML</div>
-        <div class="stat-delta">+5.8% vs prev business day</div>
-      </div>
-      <div class="stat">
-        <div class="stat-val">328</div>
-        <div class="stat-lbl">Changed paragraphs</div>
-        <div class="stat-help">Added, removed, or modified vs yesterday</div>
-        <div class="stat-delta">14.2% change rate</div>
-      </div>
-      <div class="stat">
-        <div class="stat-val">93.7%</div>
-        <div class="stat-lbl">Avg classifier confidence</div>
-        <div class="stat-help">Mean softmax score across all changes</div>
-        <div class="stat-delta">≥ 0.50 fallback threshold</div>
-      </div>
-      <div class="stat">
-        <div class="stat-val">11</div>
-        <div class="stat-lbl">Regulatory domains</div>
-        <div class="stat-help">Zero-shot NLI labels (no fine-tuning)</div>
-        <div class="stat-delta">env · fin · hlt · trn · ...</div>
+        <h2>Three steps, one daily output.</h2>
+        <p class="deck">
+          The Federal Register is the U.S. government's daily journal of every new and proposed rule. Each business day it publishes thousands of paragraphs of regulatory text. This pipeline does three things with that text.
+        </p>
       </div>
     </div>
-  </div>
+    <div class="prose" style="margin-left: calc(12rem + 2.5rem); max-width: 62ch;">
+      <p>
+        First, it <b>downloads</b> today's bulk XML and yesterday's. Second, it <b>diffs</b> them at the word level with <code>difflib.SequenceMatcher</code>, surfacing the exact tokens added, removed, or modified inside each paragraph. Third, it <b>classifies</b> every changed paragraph into one of eleven regulatory domains via a zero-shot DistilRoBERTa NLI model, so the feed can be filtered to whatever a given user actually cares about.
+      </p>
+      <p>
+        Records land in PostgreSQL with full provenance (document number, agency, publication date, paragraph hash) and are served through a small FastAPI surface. Most regulatory monitors tell you that a document changed. This one tells you which words.
+      </p>
+    </div>
+  </section>
 
-  <!-- Recent changes table -->
-  <div class="card full" id="changes">
-    <div class="card-head">
+  <section>
+    <div class="section-head">
+      <div class="kicker">Today's changes</div>
       <div>
-        <h2>Recent changes</h2>
+        <h2>Eight of 328 paragraphs that differ from yesterday.</h2>
+        <p class="deck">
+          Each row is one changed paragraph. <em>Type</em> is whether it was added, removed, or modified in place. <em>Domain</em> is the predicted regulatory area; <em>conf.</em> is the classifier's softmax score on a 0 to 1 scale.
+        </p>
       </div>
-      <div class="meta">GET /changes?pub_date=2026-04-24</div>
     </div>
-    <p class="caption">
-      Each row is one paragraph that differs from the previous business day's publication.
-      <b>Type</b> is whether it was newly added, removed entirely, or modified in place.
-      <b>Domain</b> is the predicted regulatory area; <b>conf.</b> is how sure the classifier
-      is on a 0–1 scale.
-    </p>
-    <table>
+    <div class="table-scroll">
+    <table class="changes-table">
       <thead>
         <tr>
-          <th>Doc #</th>
-          <th>Agency</th>
-          <th>Type</th>
-          <th>Domain</th>
-          <th>Conf.</th>
-          <th>What changed (excerpt)</th>
+          <th style="width: 6.5rem;">Doc</th>
+          <th style="width: 5rem;">Agency</th>
+          <th style="width: 6.5rem;">Type</th>
+          <th style="width: 9rem;">Domain</th>
+          <th style="width: 4rem;">Conf.</th>
+          <th>Excerpt</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td class="doc">2026-08901</td>
           <td class="agency">EPA</td>
-          <td><span class="pill pill-modified">modified</span></td>
-          <td><span class="pill pill-env">environmental</span></td>
-          <td>0.981</td>
-          <td>…PM2.5 standard reduced from <span class="del">35 μg/m³</span> to <span class="ins">25 μg/m³</span> under revised NAAQS attainment criteria…</td>
+          <td><span class="tag tag-modify">modified</span></td>
+          <td><span class="domain-dot" style="background:oklch(50% 0.115 152);"></span>environmental</td>
+          <td class="conf">0.981</td>
+          <td>PM2.5 standard reduced from <span class="del">35 μg/m³</span> to <span class="ins">25 μg/m³</span> under revised NAAQS attainment criteria.</td>
         </tr>
         <tr>
           <td class="doc">2026-08874</td>
           <td class="agency">SEC</td>
-          <td><span class="pill pill-added">added</span></td>
-          <td><span class="pill pill-fin">financial</span></td>
-          <td>0.976</td>
-          <td>…registrants must disclose material cybersecurity incidents within <span class="ins">four business days</span> of determining materiality pursuant to Item 1.05…</td>
+          <td><span class="tag tag-add">added</span></td>
+          <td><span class="domain-dot" style="background:oklch(45% 0.12 240);"></span>financial</td>
+          <td class="conf">0.976</td>
+          <td>Registrants must disclose material cybersecurity incidents within <span class="ins">four business days</span> of determining materiality, pursuant to Item 1.05.</td>
         </tr>
         <tr>
           <td class="doc">2026-08812</td>
           <td class="agency">CMS</td>
-          <td><span class="pill pill-modified">modified</span></td>
-          <td><span class="pill pill-hlt">healthcare</span></td>
-          <td>0.963</td>
-          <td>…readmission reduction program extended to <span class="ins">skilled nursing facilities</span>; measurement window from <span class="del">30</span> to <span class="ins">45</span> days…</td>
+          <td><span class="tag tag-modify">modified</span></td>
+          <td><span class="domain-dot" style="background:oklch(45% 0.13 305);"></span>healthcare</td>
+          <td class="conf">0.963</td>
+          <td>Readmission reduction program extended to <span class="ins">skilled nursing facilities</span>; measurement window from <span class="del">30</span> to <span class="ins">45</span> days.</td>
         </tr>
         <tr>
           <td class="doc">2026-08770</td>
           <td class="agency">USDA</td>
-          <td><span class="pill pill-removed">removed</span></td>
-          <td><span class="pill pill-agr">agriculture</span></td>
-          <td>0.948</td>
+          <td><span class="tag tag-remove">removed</span></td>
+          <td><span class="domain-dot" style="background:oklch(50% 0.13 55);"></span>agriculture</td>
+          <td class="conf">0.948</td>
           <td><span class="del">Interim waiver of origin labeling requirements for processed beef imports under USMCA expires 2026-06-30.</span></td>
         </tr>
         <tr>
           <td class="doc">2026-08741</td>
           <td class="agency">FMCSA</td>
-          <td><span class="pill pill-added">added</span></td>
-          <td><span class="pill pill-trn">transportation</span></td>
-          <td>0.957</td>
-          <td>…AV commercial vehicles operating above SAE Level 3 require <span class="ins">real-time telemetry logging</span> and FMCSA safety certification…</td>
+          <td><span class="tag tag-add">added</span></td>
+          <td><span class="domain-dot" style="background:oklch(50% 0.018 80);"></span>transportation</td>
+          <td class="conf">0.957</td>
+          <td>AV commercial vehicles operating above SAE Level 3 require <span class="ins">real-time telemetry logging</span> and FMCSA safety certification.</td>
         </tr>
         <tr>
           <td class="doc">2026-08712</td>
           <td class="agency">FERC</td>
-          <td><span class="pill pill-modified">modified</span></td>
-          <td><span class="pill pill-enr">energy</span></td>
-          <td>0.944</td>
-          <td>…transmission planning updated to include <span class="ins">climate scenario analysis</span> under Order 896; <span class="del">10-year</span> <span class="ins">20-year</span> planning horizon required…</td>
+          <td><span class="tag tag-modify">modified</span></td>
+          <td><span class="domain-dot" style="background:oklch(60% 0.14 80);"></span>energy</td>
+          <td class="conf">0.944</td>
+          <td>Transmission planning updated to include <span class="ins">climate scenario analysis</span> under Order 896; <span class="del">10-year</span> <span class="ins">20-year</span> planning horizon required.</td>
         </tr>
         <tr>
           <td class="doc">2026-08688</td>
           <td class="agency">OCC</td>
-          <td><span class="pill pill-added">added</span></td>
-          <td><span class="pill pill-fin">financial</span></td>
-          <td>0.969</td>
-          <td>…national banks engaging in crypto-asset custody must maintain <span class="ins">segregated ledger accounts</span> with monthly attestation…</td>
+          <td><span class="tag tag-add">added</span></td>
+          <td><span class="domain-dot" style="background:oklch(45% 0.12 240);"></span>financial</td>
+          <td class="conf">0.969</td>
+          <td>National banks engaging in crypto-asset custody must maintain <span class="ins">segregated ledger accounts</span> with monthly attestation.</td>
         </tr>
         <tr>
           <td class="doc">2026-08651</td>
           <td class="agency">DOL</td>
-          <td><span class="pill pill-modified">modified</span></td>
-          <td><span class="pill pill-lab">labor</span></td>
-          <td>0.938</td>
-          <td>…fiduciary duty standard expanded from <span class="del">ERISA plans only</span> to <span class="ins">all tax-advantaged retirement accounts</span>…</td>
+          <td><span class="tag tag-modify">modified</span></td>
+          <td><span class="domain-dot" style="background:oklch(55% 0.16 0);"></span>labor</td>
+          <td class="conf">0.938</td>
+          <td>Fiduciary duty standard expanded from <span class="del">ERISA plans only</span> to <span class="ins">all tax-advantaged retirement accounts</span>.</td>
         </tr>
       </tbody>
     </table>
-  </div>
+    </div>
+  </section>
 
-  <!-- Domain donut -->
-  <div class="card" id="domains">
-    <div class="card-head">
-      <h2>Where the changes were</h2>
-      <span class="meta">328 changes</span>
+  <section>
+    <div class="section-head">
+      <div class="kicker">Where the changes were</div>
+      <div>
+        <h2>Financial and environmental rules dominate, as usual.</h2>
+        <p class="deck">
+          Two views of the same 328 changes: the share each domain holds, and how those changes split across additions, modifications, and removals.
+        </p>
+      </div>
     </div>
-    <p class="caption">
-      Of the <b>328 changed paragraphs</b> on this day, here's how many fell into each
-      regulatory domain. Financial and environmental rules dominate — typical for any
-      given week.
-    </p>
-    <div style="position:relative;height:260px;">
-      <canvas id="domainChart"></canvas>
+    <div class="two-col">
+      <div class="chart-block">
+        <div class="chart-title">By domain</div>
+        <div class="chart-sub">Share of the 328 changed paragraphs that fall into each regulatory area.</div>
+        <div style="position:relative;height:300px;">
+          <canvas id="domainChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-block">
+        <div class="chart-title">By diff type</div>
+        <div class="chart-sub">For the seven busiest domains, how many paragraphs were added, modified, or removed.</div>
+        <div style="position:relative;height:300px;">
+          <canvas id="diffTypeChart"></canvas>
+        </div>
+      </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Diff-type bar -->
-  <div class="card" id="difftype">
-    <div class="card-head">
-      <h2>What kind of changes</h2>
-      <span class="meta">stacked by diff_type</span>
+  <section>
+    <div class="section-head">
+      <div class="kicker">A sample diff</div>
+      <div>
+        <h2>What a token-level change actually looks like.</h2>
+        <p class="deck">
+          The EPA's PM2.5 rule, paragraph 3 of 12 in document 2026-08901. Strikethrough red is what was removed; solid green is what was inserted. A 4-token edit that tightens an air-quality limit, easy to miss inside a 40-page rule.
+        </p>
+      </div>
     </div>
-    <p class="caption">
-      For each domain, the breakdown of <b>added</b> (new paragraphs), <b>modified</b>
-      (existing paragraphs whose text changed), and <b>removed</b> (paragraphs that
-      disappeared between yesterday and today).
-    </p>
-    <div style="position:relative;height:260px;">
-      <canvas id="diffTypeChart"></canvas>
+    <div class="diff-block">
+      <div class="diff-meta">
+        <span><b>differ.py</b></span>
+        <span>·</span>
+        <span>SequenceMatcher</span>
+        <span>·</span>
+        <span>diff_type:</span>
+        <span class="tag tag-modify">modified</span>
+      </div>
+      <div class="diff-text">
+        The primary national ambient air quality standard for fine particulate matter (PM2.5) shall not exceed <span class="del">thirty-five (35)</span><span class="ins">twenty-five (25)</span> micrograms per cubic meter (μg/m³) as a 24-hour average. The annual standard is <span class="del">12</span><span class="ins">9</span> μg/m³ for all Class I and Class II attainment areas.
+      </div>
+      <div class="diff-tally">
+        <span><b>4</b> deleted</span>
+        <span><b>4</b> inserted</span>
+        <span><b>46</b> equal</span>
+      </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Token-level diff example -->
-  <div class="card full" id="diff">
-    <div class="card-head">
-      <h2>What "token-level diff" actually looks like</h2>
-      <span class="meta">Doc 2026-08901 (EPA) · ¶3 / 12</span>
+  <section>
+    <div class="section-head">
+      <div class="kicker">The last fortnight</div>
+      <div>
+        <h2>Daily change volume, fourteen business days.</h2>
+        <p class="deck">
+          Federal Register volume is naturally bumpy. Quiet days hover near 250 changed paragraphs; busier rule-issuing days push past 320.
+        </p>
+      </div>
     </div>
-    <p class="caption">
-      Most regulatory monitors only tell you that <em>a document changed</em>. This one
-      shows you <em>which words</em>. Below: the EPA's PM2.5 standard. <span class="del">Red strikethrough</span>
-      = removed; <span class="ins">green</span> = inserted. Numbers tightened from 35 to 25
-      μg/m³ — easy to miss in a 40-page rule.
-    </p>
-    <div class="diff-meta">
-      <code>differ.py</code>
-      <span style="color:var(--dim);">·</span>
-      <code>SequenceMatcher</code>
-      <span style="color:var(--dim);">·</span>
-      <span>diff_type:</span>
-      <span class="pill pill-modified">modified</span>
-    </div>
-    <div class="diff-box">
-      <span class="eq">The primary national ambient air quality standard for fine particulate matter (PM2.5) shall not exceed </span><span class="del">thirty-five (35)</span><span class="ins">twenty-five (25)</span><span class="eq"> micrograms per cubic meter (μg/m³) as a 24-hour average. The annual standard is </span><span class="del">12</span><span class="ins">9</span><span class="eq"> μg/m³ for all Class I and Class II attainment areas.</span>
-    </div>
-    <div class="diff-tokens">
-      <span style="color:#fca5a5;">●&nbsp;<strong>4</strong> deleted</span>
-      <span style="color:#6ee7b7;">●&nbsp;<strong>4</strong> inserted</span>
-      <span style="color:var(--muted);">●&nbsp;<strong>46</strong> equal</span>
-    </div>
-  </div>
-
-  <!-- Daily volume timeline -->
-  <div class="card full">
-    <div class="card-head">
-      <h2>Daily change volume</h2>
-      <span class="meta">last 14 business days</span>
-    </div>
-    <p class="caption">
-      Number of changed paragraphs ingested per day. Federal Register volume is naturally
-      bumpy — quiet days hover near 250, while heavier rule-issuing days push past 320.
-    </p>
     <div style="position:relative;height:240px;">
       <canvas id="volumeChart"></canvas>
     </div>
-  </div>
+  </section>
 
-  <!-- Confidence by domain -->
-  <div class="card full">
-    <div class="card-head">
-      <h2>Classifier confidence by domain</h2>
-      <span class="meta">last 30 days · n = 4,872 paragraphs</span>
+  <section>
+    <div class="section-head">
+      <div class="kicker">Model performance</div>
+      <div>
+        <h2>How sure the classifier is, by domain.</h2>
+        <p class="deck">
+          Average confidence over the last 30 days, n equals 4,872 paragraphs. Domains with distinctive vocabulary (environmental, financial) score high. The <code>other</code> bucket is the deliberate fallback when no candidate label exceeds the <code>min_confidence</code> threshold, so its mean is lower by construction.
+        </p>
+      </div>
     </div>
-    <p class="caption">
-      How sure the model is, on average, when assigning each domain label. Higher is better.
-      Domains like <em>environmental</em> and <em>financial</em> have distinctive vocabulary;
-      <em>other</em> is the deliberate fallback when nothing scores above the
-      <code style="font-family:'JetBrains Mono',monospace;color:var(--accent);">min_confidence</code> threshold,
-      so its average is lower by design.
-    </p>
-    <div style="position:relative;height:280px;">
+    <div style="position:relative;height:340px;">
       <canvas id="confChart"></canvas>
     </div>
-  </div>
+  </section>
 
-  <!-- API quick reference -->
-  <div class="card full" id="api">
-    <div class="card-head">
-      <h2>The REST API</h2>
-      <span class="meta">FastAPI · OpenAPI at /docs</span>
+  <section>
+    <div class="section-head">
+      <div class="kicker">The API</div>
+      <div>
+        <h2>How you would consume this feed.</h2>
+        <p class="deck">
+          Once records are in Postgres, FastAPI serves them. Filter by <code>pub_date</code> and <code>domain</code>; paginate with <code>limit</code> and <code>offset</code>. Full OpenAPI spec at <code>/docs</code>.
+        </p>
+      </div>
     </div>
-    <p class="caption">
-      Once the pipeline writes records to Postgres, this is how you'd consume them. All
-      endpoints return JSON. Filter by <code style="font-family:'JetBrains Mono',monospace;color:var(--accent);">pub_date</code>
-      and <code style="font-family:'JetBrains Mono',monospace;color:var(--accent);">domain</code>; paginate with
-      <code style="font-family:'JetBrains Mono',monospace;color:var(--accent);">limit</code> and <code style="font-family:'JetBrains Mono',monospace;color:var(--accent);">offset</code>.
-    </p>
-    <div class="api-grid">
+    <div class="api-pair">
       <div class="api-block">
-        <div class="endpoint"><span class="api-method">GET</span><span>/changes?pub_date=2026-04-24&amp;domain=financial</span></div>
-<pre><span class="c">// 200 OK — paginated change records</span>
+        <div class="endpoint"><span class="verb">GET</span>/changes?pub_date=2026-04-24&amp;domain=financial</div>
+<pre><span class="c">// 200 OK, paginated change records</span>
 {
   <span class="k">"total"</span>: <span class="n">42</span>,
   <span class="k">"limit"</span>: <span class="n">50</span>,
@@ -659,8 +692,8 @@
 }</pre>
       </div>
       <div class="api-block">
-        <div class="endpoint"><span class="api-method">GET</span><span>/stats</span></div>
-<pre><span class="c">// 200 OK — totals + avg confidence by domain</span>
+        <div class="endpoint"><span class="verb">GET</span>/stats</div>
+<pre><span class="c">// 200 OK, totals + avg confidence by domain</span>
 [
   { <span class="k">"domain"</span>: <span class="s">"financial"</span>,
     <span class="k">"total_changes"</span>: <span class="n">8421</span>,
@@ -674,112 +707,127 @@
 ]</pre>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Architecture -->
-  <div class="card full" id="arch">
-    <div class="card-head">
-      <h2>How a single day flows through the pipeline</h2>
-      <span class="meta">~3 min end-to-end on a laptop</span>
-    </div>
-    <p class="caption">
-      Five stages: download today's XML, diff against yesterday's cached copy, classify the
-      changed paragraphs, write structured records to Postgres, serve them via FastAPI.
-      Each stage is in its own module so it's easy to test or swap.
-    </p>
-    <div class="arch-grid">
-      <div class="arch-step">
-        <div class="arch-icon">📄</div>
-        <div class="arch-name">Federal Register</div>
-        <div class="arch-sub">Bulk XML · daily fetch with retry</div>
-      </div>
-      <div class="arch-step">
-        <div class="arch-icon">⚙️</div>
-        <div class="arch-name">differ.py</div>
-        <div class="arch-sub">SequenceMatcher · SHA-256 paragraph hashing</div>
-      </div>
-      <div class="arch-step">
-        <div class="arch-icon">🤖</div>
-        <div class="arch-name">classifier.py</div>
-        <div class="arch-sub">DistilRoBERTa zero-shot NLI · 11 labels</div>
-      </div>
-      <div class="arch-step">
-        <div class="arch-icon">🗄️</div>
-        <div class="arch-name">PostgreSQL</div>
-        <div class="arch-sub">changed_paragraphs table · indexed by pub_date</div>
-      </div>
-      <div class="arch-step">
-        <div class="arch-icon">🚀</div>
-        <div class="arch-name">FastAPI</div>
-        <div class="arch-sub">/changes · /domains · /stats · /health</div>
+  <section>
+    <div class="section-head">
+      <div class="kicker">How a day flows</div>
+      <div>
+        <h2>Five stages, end to end in about three minutes.</h2>
+        <p class="deck">
+          Each stage is its own module so any of them can be tested or swapped. Total runtime on a laptop is dominated by classifier inference, which is batched across the whole day's changed paragraphs.
+        </p>
       </div>
     </div>
-  </div>
+    <div class="pipeline">
+      <div class="step">
+        <div class="name">Ingest</div>
+        <div class="what">Pull bulk XML from federalregister.gov with retry and on-disk cache.</div>
+      </div>
+      <div class="step">
+        <div class="name">Diff</div>
+        <div class="what">Word-level <code style="font-family:var(--mono);font-size:0.85em;color:var(--accent);">SequenceMatcher</code> over each document, paragraphs hashed with SHA-256.</div>
+      </div>
+      <div class="step">
+        <div class="name">Classify</div>
+        <div class="what">Zero-shot DistilRoBERTa NLI across 11 candidate labels, batched.</div>
+      </div>
+      <div class="step">
+        <div class="name">Persist</div>
+        <div class="what">Postgres upsert into <code style="font-family:var(--mono);font-size:0.85em;color:var(--accent);">changed_paragraphs</code>, indexed by <code style="font-family:var(--mono);font-size:0.85em;color:var(--accent);">pub_date</code>.</div>
+      </div>
+      <div class="step">
+        <div class="name">Serve</div>
+        <div class="what">FastAPI surface at <code style="font-family:var(--mono);font-size:0.85em;color:var(--accent);">/changes</code>, <code style="font-family:var(--mono);font-size:0.85em;color:var(--accent);">/domains</code>, <code style="font-family:var(--mono);font-size:0.85em;color:var(--accent);">/stats</code>.</div>
+      </div>
+    </div>
+  </section>
 
-  <!-- Glossary -->
-  <div class="card full">
-    <div class="card-head">
-      <h2>Quick glossary</h2>
-      <span class="meta">terms used on this page</span>
+  <section>
+    <div class="section-head">
+      <div class="kicker">Glossary</div>
+      <div>
+        <h2>Terms used on this page.</h2>
+      </div>
     </div>
-    <div class="gloss-grid">
-      <dl class="gloss">
+    <dl class="glossary">
+      <div>
         <dt>Federal Register</dt>
         <dd>The official daily journal of the U.S. government, where every federal agency publishes new and proposed regulations.</dd>
-      </dl>
-      <dl class="gloss">
+      </div>
+      <div>
         <dt>Bulk XML</dt>
-        <dd>The full text of a single day's Federal Register, served as one downloadable XML file. The whole-document atomicity is what makes day-over-day diffing reliable.</dd>
-      </dl>
-      <dl class="gloss">
-        <dt>diff_type</dt>
-        <dd>How a paragraph changed: <code>added</code> (new this publication), <code>removed</code> (gone from this publication), or <code>modified</code> (text changed in place).</dd>
-      </dl>
-      <dl class="gloss">
+        <dd>The full text of a single day's Federal Register, served as one downloadable XML file. Whole-document atomicity is what makes day-over-day diffing reliable.</dd>
+      </div>
+      <div>
+        <dt><code>diff_type</code></dt>
+        <dd>How a paragraph changed: <code>added</code>, <code>removed</code>, or <code>modified</code> in place.</dd>
+      </div>
+      <div>
         <dt>Token-level diff</dt>
-        <dd>Comparison at the word level, not just the paragraph or document level — so you can highlight the exact words that changed inside an otherwise unchanged sentence.</dd>
-      </dl>
-      <dl class="gloss">
+        <dd>A comparison at the word level rather than the paragraph or document level, so the exact words that changed inside a sentence can be highlighted.</dd>
+      </div>
+      <div>
         <dt>Zero-shot NLI</dt>
-        <dd>A classifier that maps text to candidate labels using natural-language entailment, without any labeled training data. Lets the project work on day one with no manual annotation.</dd>
-      </dl>
-      <dl class="gloss">
-        <dt>domain_score</dt>
-        <dd>The model's confidence in its top-predicted domain, between 0 and 1. Predictions below the configurable <code>min_confidence</code> are returned as <code>"other"</code> rather than confidently mislabeled.</dd>
-      </dl>
-    </div>
-  </div>
+        <dd>A classifier that maps text to candidate labels using natural-language entailment, without any labelled training data. Useful here because there is no public corpus of regulatory paragraphs labelled by domain.</dd>
+      </div>
+      <div>
+        <dt><code>domain_score</code></dt>
+        <dd>The model's confidence in its top-predicted domain, between 0 and 1. Predictions below the configurable <code>min_confidence</code> are returned as <code>"other"</code>, by design.</dd>
+      </div>
+    </dl>
+  </section>
 
-</main>
+</article>
 
-<footer>
+<footer class="colophon">
   <div>
-    Built by <a href="https://github.com/astew24">@astew24</a> · UC San Diego ·
-    <a href="https://github.com/astew24/reg-change-engine">source on GitHub</a>
+    <strong style="font-family:var(--serif);color:var(--ink);font-weight:600;">reg-change-engine</strong> · daily Federal Register diff and classifier
   </div>
-  <div style="margin-top:0.5rem;font-size:0.78rem;color:var(--dim);">
-    Demo numbers and document IDs above are illustrative — the live pipeline reads real Federal Register XML.
+  <div>
+    Built by <a href="https://github.com/astew24">Andrew Stewart</a>, UC San Diego, 2026 · <a href="https://github.com/astew24/reg-change-engine">view source</a>
   </div>
 </footer>
 
 <script>
-  const MUTED = '#8b94b4';
-  const GRID = 'rgba(99, 119, 175, 0.14)';
-  const FONT = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  // Editorial palette, OKLCH translated to hex via CSS engine where Chart.js can't read OKLCH directly.
+  const INK   = '#2c2823';
+  const INK2  = '#4f4a42';
+  const INK3  = '#6f685e';
+  const INK4  = '#9a9388';
+  const RULE  = '#e3ddd2';
+  const PAPER = '#fbf9f5';
 
-  Chart.defaults.color = MUTED;
-  Chart.defaults.font.family = FONT;
+  const PALETTE = [
+    '#3a4d8a', // financial — slate blue
+    '#4f7a4a', // environmental — moss
+    '#6b4a7c', // healthcare — heather
+    '#8c7a5a', // transportation — bronze
+    '#b08428', // energy — ochre
+    '#9c6b2e', // agriculture — cinnamon
+    '#a23b3b', // labor — iron red
+    '#5c5a55', // defense — graphite
+    '#3f7a82', // education — teal
+    '#7a5a8a', // telecom — wisteria
+    '#7e766a', // other — taupe
+  ];
+
+  Chart.defaults.color = INK3;
+  Chart.defaults.font.family = "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   Chart.defaults.font.size = 11;
+  Chart.defaults.animation.duration = 700;
+  Chart.defaults.animation.easing = 'easeOutQuart';
 
   const TOOLTIP = {
-    backgroundColor: '#0a0e22',
-    borderColor: 'rgba(99, 119, 175, 0.32)',
+    backgroundColor: PAPER,
+    borderColor: RULE,
     borderWidth: 1,
-    titleColor: '#e8ecf6',
-    bodyColor: '#c4cbe0',
+    titleColor: INK,
+    bodyColor: INK2,
     padding: 10,
-    cornerRadius: 8,
-    titleFont: { weight: '600' },
+    cornerRadius: 3,
+    titleFont: { weight: '600', family: "'Newsreader', Georgia, serif", size: 13 },
+    bodyFont: { family: "ui-sans-serif, system-ui, sans-serif" },
   };
 
   // Domain donut
@@ -789,81 +837,83 @@
       labels: ['Financial','Environmental','Healthcare','Transportation','Energy','Agriculture','Labor','Defense','Education','Telecom','Other'],
       datasets: [{
         data: [82, 64, 49, 36, 30, 23, 19, 10, 8, 6, 11],
-        backgroundColor: ['#7aa2ff','#34d399','#a78bfa','#94a3b8','#fbbf24','#fb923c','#f472b6','#f87171','#22d3ee','#c084fc','#475569'],
-        borderColor: '#0a0e22',
+        backgroundColor: PALETTE,
+        borderColor: PAPER,
         borderWidth: 2,
-        hoverOffset: 8,
-        hoverBorderColor: '#0a0e22',
+        hoverOffset: 6,
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      cutout: '68%',
+      cutout: '64%',
       plugins: {
-        legend: { position: 'right', labels: { color: MUTED, font: { size: 10.5, family: FONT }, boxWidth: 10, padding: 8, usePointStyle: true, pointStyle: 'circle' } },
-        tooltip: { ...TOOLTIP, callbacks: { label: (c) => ` ${c.label}: ${c.parsed} changes` } }
+        legend: {
+          position: 'right',
+          labels: {
+            color: INK2, boxWidth: 9, padding: 7,
+            usePointStyle: true, pointStyle: 'circle',
+            font: { size: 11.5 }
+          }
+        },
+        tooltip: { ...TOOLTIP, callbacks: { label: c => `  ${c.label}: ${c.parsed} changes` } }
       }
     }
   });
 
-  // Diff type stacked bar (per domain)
+  // Diff type stacked bar
   new Chart(document.getElementById('diffTypeChart'), {
     type: 'bar',
     data: {
       labels: ['Fin','Env','Hlt','Trn','Enr','Agr','Lab'],
       datasets: [
-        { label: 'added',    data: [34, 22, 18, 14, 11,  9,  7], backgroundColor: '#34d399', borderRadius: 4, },
-        { label: 'modified', data: [38, 31, 24, 17, 14, 10,  8], backgroundColor: '#7aa2ff', borderRadius: 4, },
-        { label: 'removed',  data: [10, 11,  7,  5,  5,  4,  4], backgroundColor: '#f87171', borderRadius: 4, },
+        { label: 'added',    data: [34, 22, 18, 14, 11,  9,  7], backgroundColor: '#4f7a4a' },
+        { label: 'modified', data: [38, 31, 24, 17, 14, 10,  8], backgroundColor: '#3a4d8a' },
+        { label: 'removed',  data: [10, 11,  7,  5,  5,  4,  4], backgroundColor: '#a23b3b' },
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       scales: {
-        x: { stacked: true, grid: { display: false }, ticks: { color: MUTED } },
-        y: { stacked: true, grid: { color: GRID }, ticks: { color: MUTED }, title: { display: true, text: 'paragraphs', color: MUTED, font: { size: 10 } } }
+        x: { stacked: true, grid: { display: false }, border: { color: RULE }, ticks: { color: INK3 } },
+        y: { stacked: true, grid: { color: RULE }, border: { display: false }, ticks: { color: INK4 } }
       },
       plugins: {
-        legend: { labels: { color: MUTED, font: { size: 11, family: FONT }, boxWidth: 12, usePointStyle: true, pointStyle: 'circle' } },
+        legend: { labels: { color: INK2, boxWidth: 12, usePointStyle: true, pointStyle: 'circle' } },
         tooltip: TOOLTIP
       }
     }
   });
 
-  // Daily volume timeline
+  // Daily volume
   const days = ['04/07','04/08','04/09','04/10','04/11','04/14','04/15','04/16','04/17','04/18','04/21','04/22','04/23','04/24'];
   const vol  = [276, 312, 258, 244, 312, 289, 271, 305, 318, 264, 296, 281, 310, 328];
-  const ctx  = document.getElementById('volumeChart').getContext('2d');
-  const grad = ctx.createLinearGradient(0, 0, 0, 240);
-  grad.addColorStop(0, 'rgba(122, 162, 255, 0.85)');
-  grad.addColorStop(1, 'rgba(122, 162, 255, 0.18)');
-  new Chart(ctx, {
+  new Chart(document.getElementById('volumeChart'), {
     type: 'bar',
     data: {
       labels: days,
       datasets: [{
         label: 'Changed paragraphs',
         data: vol,
-        backgroundColor: grad,
-        borderColor: '#7aa2ff',
-        borderWidth: 0,
-        borderRadius: 6,
+        backgroundColor: '#3a4d8a',
+        borderRadius: 1,
+        barPercentage: 0.6,
+        categoryPercentage: 0.85,
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       scales: {
-        x: { grid: { display: false }, ticks: { color: MUTED } },
-        y: { grid: { color: GRID }, ticks: { color: MUTED }, beginAtZero: true, title: { display: true, text: 'paragraphs', color: MUTED, font: { size: 10 } } }
+        x: { grid: { display: false }, border: { color: RULE }, ticks: { color: INK3 } },
+        y: { grid: { color: RULE }, border: { display: false }, ticks: { color: INK4 }, beginAtZero: true }
       },
       plugins: {
         legend: { display: false },
-        tooltip: { ...TOOLTIP, callbacks: { label: (c) => ` ${c.parsed.y} changed paragraphs` } }
+        tooltip: { ...TOOLTIP, callbacks: { label: c => `  ${c.parsed.y} changed paragraphs` } }
       }
     }
   });
 
-  // Confidence by domain (horizontal bar)
+  // Confidence by domain
   new Chart(document.getElementById('confChart'), {
     type: 'bar',
     data: {
@@ -873,24 +923,24 @@
         data: [0.952, 0.948, 0.931, 0.919, 0.908, 0.894, 0.882, 0.871, 0.842, 0.811, 0.673],
         backgroundColor: (ctx) => {
           const v = ctx.raw;
-          if (v >= 0.90) return '#34d399';
-          if (v >= 0.80) return '#7aa2ff';
-          if (v >= 0.70) return '#fbbf24';
-          return '#f87171';
+          if (v < 0.75) return '#a23b3b';
+          if (v < 0.85) return '#b08428';
+          return '#4f7a4a';
         },
-        borderRadius: 5,
+        borderRadius: 1,
+        barPercentage: 0.7,
       }]
     },
     options: {
       indexAxis: 'y',
       responsive: true, maintainAspectRatio: false,
       scales: {
-        x: { min: 0.5, max: 1.0, grid: { color: GRID }, ticks: { color: MUTED, callback: (v) => v.toFixed(2) }, title: { display: true, text: 'avg softmax score (0–1)', color: MUTED, font: { size: 10 } } },
-        y: { grid: { display: false }, ticks: { color: MUTED, font: { size: 11, family: FONT } } }
+        x: { min: 0.5, max: 1.0, grid: { color: RULE }, border: { display: false }, ticks: { color: INK4, callback: v => v.toFixed(2) } },
+        y: { grid: { display: false }, border: { color: RULE }, ticks: { color: INK2, font: { size: 12 } } }
       },
       plugins: {
         legend: { display: false },
-        tooltip: { ...TOOLTIP, callbacks: { label: (c) => ' confidence: ' + c.raw.toFixed(3) } }
+        tooltip: { ...TOOLTIP, callbacks: { label: c => '  confidence: ' + c.raw.toFixed(3) } }
       }
     }
   });
