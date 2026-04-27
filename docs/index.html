@@ -3,199 +3,454 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>reg-change-engine — Demo</title>
+  <title>reg-change-engine — what changed in U.S. federal regulations today</title>
+  <meta name="description" content="A daily-updated dashboard showing every paragraph that was added, removed, or modified in the U.S. Federal Register, classified by regulatory domain.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%9C%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
-      --bg: #0b1120;
-      --panel: #111c33;
-      --panel-2: #0f172a;
-      --border: #1f2c47;
-      --text: #e2e8f0;
-      --muted: #94a3b8;
-      --dim: #64748b;
-      --accent: #60a5fa;
-      --accent-2: #818cf8;
-      --green: #4ade80;
+      --bg-0: #07091a;
+      --bg-1: #0d1226;
+      --panel: rgba(20, 26, 50, 0.7);
+      --panel-solid: #0f1530;
+      --panel-2: #0a0e22;
+      --border: rgba(99, 119, 175, 0.18);
+      --border-strong: rgba(99, 119, 175, 0.32);
+      --text: #e8ecf6;
+      --text-2: #c4cbe0;
+      --muted: #8b94b4;
+      --dim: #5e6789;
+      --accent: #7aa2ff;
+      --accent-2: #a78bfa;
+      --accent-3: #34d399;
+      --green: #34d399;
       --red: #f87171;
+      --amber: #fbbf24;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background:
-        radial-gradient(1200px 600px at 80% -10%, rgba(96,165,250,0.10), transparent 60%),
-        radial-gradient(900px 500px at -10% 10%, rgba(129,140,248,0.10), transparent 60%),
-        var(--bg);
+        radial-gradient(1200px 700px at 85% -10%, rgba(122, 162, 255, 0.18), transparent 60%),
+        radial-gradient(900px 600px at -5% 5%, rgba(167, 139, 250, 0.16), transparent 60%),
+        radial-gradient(700px 500px at 50% 100%, rgba(52, 211, 153, 0.08), transparent 60%),
+        var(--bg-0);
       color: var(--text);
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.005em;
+      line-height: 1.5;
     }
 
+    /* subtle dot grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 22px 22px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* nav */
+    nav {
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      background: rgba(7, 9, 26, 0.7);
+      border-bottom: 1px solid var(--border);
+    }
+    nav .nav-inner {
+      max-width: 1180px; margin: 0 auto;
+      padding: 0.85rem 1.5rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    }
+    .brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 0.95rem; color: var(--text); }
+    .brand-mark {
+      width: 26px; height: 26px; border-radius: 7px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+      display: grid; place-items: center; font-size: 0.85rem;
+      box-shadow: 0 4px 14px rgba(122,162,255,0.4);
+    }
+    .nav-links { display: flex; gap: 1.25rem; font-size: 0.85rem; }
+    .nav-links a { color: var(--muted); text-decoration: none; transition: color 0.15s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      font-size: 0.82rem; color: var(--text);
+      padding: 0.4rem 0.85rem; border-radius: 7px;
+      background: rgba(122, 162, 255, 0.12);
+      border: 1px solid rgba(122, 162, 255, 0.3);
+      text-decoration: none; transition: all 0.15s;
+    }
+    .nav-cta:hover { background: rgba(122, 162, 255, 0.22); }
+
+    /* hero */
     header {
-      padding: 2.75rem 1.5rem 1.5rem;
-      max-width: 1100px;
+      position: relative; z-index: 1;
+      padding: 4rem 1.5rem 2.5rem;
+      max-width: 1180px;
       margin: 0 auto;
     }
-    .badge-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .badge-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
     .badge {
-      display: inline-flex; align-items: center; gap: 0.4rem;
-      background: rgba(29,78,216,0.18); color: #bfdbfe;
-      font-size: 0.7rem; font-weight: 600;
-      padding: 0.25rem 0.65rem; border-radius: 9999px;
-      letter-spacing: 0.05em; text-transform: uppercase;
-      border: 1px solid rgba(96,165,250,0.25);
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      background: rgba(122, 162, 255, 0.12); color: #b9caff;
+      font-size: 0.72rem; font-weight: 600;
+      padding: 0.3rem 0.7rem; border-radius: 9999px;
+      letter-spacing: 0.02em;
+      border: 1px solid rgba(122, 162, 255, 0.25);
     }
-    .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 8px #4ade80; }
-    .badge.muted { background: rgba(148,163,184,0.10); color: var(--muted); border-color: rgba(148,163,184,0.18); }
-    h1 { font-size: 2rem; font-weight: 700; color: #f1f5f9; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
-    .subtitle { color: var(--muted); font-size: 0.98rem; max-width: 660px; line-height: 1.6; }
-    .links { margin-top: 1.1rem; display: flex; gap: 1rem; flex-wrap: wrap; }
+    .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); animation: pulse 2.2s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .badge.muted { background: rgba(148, 163, 184, 0.08); color: var(--muted); border-color: rgba(148, 163, 184, 0.15); }
+    .badge.warn  { background: rgba(251, 191, 36, 0.10); color: #fcd34d; border-color: rgba(251, 191, 36, 0.25); }
+
+    h1 {
+      font-size: clamp(2rem, 4.5vw, 3.1rem);
+      font-weight: 800; color: #f4f6fc;
+      margin-bottom: 0.85rem; letter-spacing: -0.035em;
+      line-height: 1.05;
+    }
+    h1 .grad {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 60%, #f0abfc 100%);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle { color: var(--text-2); font-size: 1.05rem; max-width: 720px; line-height: 1.6; margin-bottom: 0.5rem; }
+    .subtitle-2 { color: var(--muted); font-size: 0.95rem; max-width: 720px; line-height: 1.6; }
+    .links { margin-top: 1.6rem; display: flex; gap: 0.7rem; flex-wrap: wrap; }
     .links a {
-      color: var(--accent); font-size: 0.875rem; text-decoration: none;
-      padding: 0.35rem 0.75rem; border-radius: 6px;
-      border: 1px solid rgba(96,165,250,0.2); background: rgba(96,165,250,0.06);
+      color: var(--text); font-size: 0.88rem; text-decoration: none;
+      padding: 0.55rem 1rem; border-radius: 8px; font-weight: 500;
+      border: 1px solid var(--border-strong); background: rgba(122, 162, 255, 0.06);
       transition: all 0.15s ease;
+      display: inline-flex; align-items: center; gap: 0.4rem;
     }
-    .links a:hover { background: rgba(96,165,250,0.14); border-color: rgba(96,165,250,0.4); }
+    .links a:hover { background: rgba(122, 162, 255, 0.16); border-color: rgba(122, 162, 255, 0.5); transform: translateY(-1px); }
+    .links a.primary { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%); border-color: transparent; color: #0b0f24; font-weight: 600; }
+    .links a.primary:hover { box-shadow: 0 8px 24px rgba(122,162,255,0.35); }
 
-    main { max-width: 1100px; margin: 1rem auto 2rem; padding: 0 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    /* main */
+    main {
+      position: relative; z-index: 1;
+      max-width: 1180px; margin: 0.5rem auto 2rem;
+      padding: 0 1.5rem;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem;
+    }
+
+    /* explainer banner */
+    .explainer {
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, rgba(122,162,255,0.08), rgba(167,139,250,0.06));
+      border: 1px solid var(--border-strong); border-radius: 1rem;
+      padding: 1.5rem 1.65rem;
+      display: grid; grid-template-columns: auto 1fr; gap: 1.25rem; align-items: start;
+    }
+    .explainer .icon-box {
+      width: 42px; height: 42px; border-radius: 10px;
+      background: rgba(122, 162, 255, 0.14);
+      border: 1px solid rgba(122, 162, 255, 0.3);
+      display: grid; place-items: center; font-size: 1.2rem;
+    }
+    .explainer h3 { font-size: 1.05rem; font-weight: 600; color: var(--text); margin-bottom: 0.35rem; }
+    .explainer p { color: var(--text-2); font-size: 0.92rem; line-height: 1.65; }
+    .explainer p + p { margin-top: 0.5rem; }
+    .explainer code { font-family: 'JetBrains Mono', monospace; font-size: 0.84em; color: #b9caff; background: rgba(122,162,255,0.10); padding: 0.05rem 0.35rem; border-radius: 4px; }
+
+    /* card */
     .card {
-      background: linear-gradient(180deg, var(--panel) 0%, #0e182d 100%);
-      border: 1px solid var(--border); border-radius: 0.85rem;
-      padding: 1.4rem;
-      box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset, 0 8px 24px rgba(2,6,23,0.4);
+      background: var(--panel);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--border); border-radius: 1rem;
+      padding: 1.5rem;
+      transition: border-color 0.2s ease;
     }
+    .card:hover { border-color: var(--border-strong); }
     .card.full { grid-column: 1 / -1; }
+    .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.4rem; }
     .card h2 {
-      font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em;
-      color: var(--dim); font-weight: 700; margin-bottom: 1rem;
-      display: flex; align-items: center; justify-content: space-between;
+      font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--accent); font-weight: 700;
     }
-    .card h2 .meta { color: var(--muted); font-weight: 500; text-transform: none; letter-spacing: 0; font-size: 0.72rem; }
+    .card .meta { color: var(--dim); font-weight: 500; font-size: 0.74rem; font-family: 'JetBrains Mono', monospace; }
+    .card .caption {
+      color: var(--muted); font-size: 0.86rem; line-height: 1.55;
+      margin-bottom: 1.1rem; max-width: 700px;
+    }
+    .card .caption b { color: var(--text-2); font-weight: 600; }
 
-    table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
-    th { color: var(--dim); text-align: left; padding: 0.4rem 0.75rem; font-weight: 500; border-bottom: 1px solid var(--border); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; }
-    td { padding: 0.6rem 0.75rem; border-bottom: 1px solid rgba(31,44,71,0.6); color: #cbd5e1; vertical-align: top; }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(96,165,250,0.04); }
-    .doc { font-family: 'SF Mono','Fira Code','Menlo',monospace; font-size: 0.78rem; color: #93c5fd; white-space: nowrap; }
-
-    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem; }
-    .stat { background: var(--panel-2); border: 1px solid var(--border); border-radius: 0.6rem; padding: 1rem 1.15rem; }
-    .stat-val { font-size: 1.7rem; font-weight: 700; color: #f1f5f9; letter-spacing: -0.02em; }
-    .stat-lbl { font-size: 0.7rem; color: var(--dim); margin-top: 0.25rem; text-transform: uppercase; letter-spacing: 0.06em; }
-    .stat-delta { font-size: 0.7rem; color: var(--green); margin-top: 0.15rem; }
+    /* stats */
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem; margin-top: 0.75rem; }
+    .stat {
+      background: var(--panel-2);
+      border: 1px solid var(--border); border-radius: 0.75rem;
+      padding: 1.1rem 1.25rem;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .stat:hover { transform: translateY(-2px); border-color: var(--border-strong); }
+    .stat-val { font-size: 1.85rem; font-weight: 700; color: #f4f6fc; letter-spacing: -0.025em; line-height: 1; }
+    .stat-lbl { font-size: 0.72rem; color: var(--dim); margin-top: 0.45rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+    .stat-help { font-size: 0.78rem; color: var(--muted); margin-top: 0.4rem; line-height: 1.4; }
+    .stat-delta { font-size: 0.74rem; color: var(--green); margin-top: 0.3rem; font-weight: 500; }
     .stat-delta.neg { color: var(--red); }
 
-    .pill { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
-    .pill-added    { background: rgba(34,197,94,0.15);  color: #86efac; }
-    .pill-removed  { background: rgba(239,68,68,0.15);  color: #fca5a5; }
-    .pill-modified { background: rgba(59,130,246,0.18); color: #93c5fd; }
-    .pill-env  { background: rgba(34,197,94,0.15);  color: #86efac; }
-    .pill-fin  { background: rgba(59,130,246,0.18); color: #93c5fd; }
-    .pill-hlt  { background: rgba(168,85,247,0.18); color: #c4b5fd; }
-    .pill-agr  { background: rgba(249,115,22,0.18); color: #fdba74; }
-    .pill-trn  { background: rgba(148,163,184,0.18); color: #d6d3d1; }
-    .pill-enr  { background: rgba(245,158,11,0.18); color: #fcd34d; }
-    .pill-lab  { background: rgba(236,72,153,0.18); color: #f9a8d4; }
+    /* table */
+    table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+    th {
+      color: var(--dim); text-align: left; padding: 0.55rem 0.85rem;
+      font-weight: 600; border-bottom: 1px solid var(--border);
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    td { padding: 0.7rem 0.85rem; border-bottom: 1px solid rgba(99, 119, 175, 0.1); color: var(--text-2); vertical-align: top; line-height: 1.5; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(122, 162, 255, 0.04); }
+    .doc { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--accent); white-space: nowrap; }
+    .agency { font-weight: 600; color: var(--text); }
 
-    .diff-box { background: var(--panel-2); border: 1px solid var(--border); border-radius: 0.55rem; padding: 1rem; font-family: 'SF Mono','Fira Code','Menlo',monospace; font-size: 0.78rem; line-height: 1.75; overflow-x: auto; word-break: break-word; }
-    .del { color: #fca5a5; background: rgba(248,113,113,0.12); border-radius: 2px; padding: 0 3px; text-decoration: line-through; text-decoration-color: rgba(248,113,113,0.5); }
-    .ins { color: #86efac; background: rgba(74,222,128,0.12); border-radius: 2px; padding: 0 3px; }
+    /* pills */
+    .pill {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.18rem 0.6rem; border-radius: 9999px;
+      font-size: 0.7rem; font-weight: 600; white-space: nowrap;
+    }
+    .pill::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.85; }
+    .pill-added    { background: rgba(52, 211, 153, 0.14);  color: #6ee7b7; }
+    .pill-removed  { background: rgba(248, 113, 113, 0.14); color: #fca5a5; }
+    .pill-modified { background: rgba(122, 162, 255, 0.16); color: #b9caff; }
+    .pill-env  { background: rgba(52, 211, 153, 0.14);  color: #6ee7b7; }
+    .pill-fin  { background: rgba(122, 162, 255, 0.16); color: #b9caff; }
+    .pill-hlt  { background: rgba(167, 139, 250, 0.16); color: #ddd6fe; }
+    .pill-agr  { background: rgba(249, 115, 22, 0.16);  color: #fdba74; }
+    .pill-trn  { background: rgba(148, 163, 184, 0.16); color: #d6d3d1; }
+    .pill-enr  { background: rgba(251, 191, 36, 0.16);  color: #fde68a; }
+    .pill-lab  { background: rgba(236, 72, 153, 0.16);  color: #f9a8d4; }
+
+    /* diff */
+    .diff-box {
+      background: var(--panel-2); border: 1px solid var(--border);
+      border-radius: 0.7rem; padding: 1.15rem 1.25rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+      line-height: 1.85; overflow-x: auto; word-break: break-word;
+    }
+    .del {
+      color: #fca5a5; background: rgba(248, 113, 113, 0.12);
+      border-radius: 3px; padding: 0.05rem 0.35rem;
+      text-decoration: line-through; text-decoration-color: rgba(248, 113, 113, 0.55);
+    }
+    .ins { color: #6ee7b7; background: rgba(52, 211, 153, 0.12); border-radius: 3px; padding: 0.05rem 0.35rem; }
     .eq  { color: var(--muted); }
-    .diff-meta { margin-bottom: 0.75rem; font-size: 0.78rem; color: var(--dim); }
-    .diff-meta code { color: #93c5fd; font-family: 'SF Mono','Fira Code',monospace; }
-    .diff-tokens { margin-top: 0.85rem; display: flex; gap: 1.5rem; font-size: 0.74rem; color: #475569; }
-    .diff-tokens strong { font-weight: 700; }
+    .diff-meta { margin-bottom: 0.85rem; font-size: 0.82rem; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+    .diff-meta code { color: var(--accent); font-family: 'JetBrains Mono', monospace; background: rgba(122,162,255,0.08); padding: 0.05rem 0.4rem; border-radius: 4px; font-size: 0.78rem; }
+    .diff-tokens { margin-top: 1rem; display: flex; gap: 1.5rem; font-size: 0.78rem; color: var(--muted); flex-wrap: wrap; }
+    .diff-tokens span { display: inline-flex; align-items: center; gap: 0.4rem; }
 
-    .arch-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.6rem; text-align: center; align-items: stretch; position: relative; }
-    .arch-step { background: var(--panel-2); border: 1px solid var(--border); border-radius: 0.55rem; padding: 0.85rem 0.5rem; transition: transform 0.15s ease, border-color 0.15s ease; }
-    .arch-step:hover { transform: translateY(-2px); border-color: rgba(96,165,250,0.4); }
-    .arch-icon { font-size: 1.4rem; margin-bottom: 0.35rem; }
-    .arch-name { font-size: 0.78rem; color: var(--text); font-weight: 600; }
-    .arch-sub  { font-size: 0.66rem; color: var(--dim); margin-top: 0.25rem; line-height: 1.35; }
+    /* arch */
+    .arch-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.7rem;
+      align-items: stretch; position: relative;
+    }
+    .arch-step {
+      background: var(--panel-2); border: 1px solid var(--border);
+      border-radius: 0.7rem; padding: 1rem 0.6rem;
+      transition: transform 0.18s ease, border-color 0.18s ease;
+      text-align: center;
+    }
+    .arch-step:hover { transform: translateY(-3px); border-color: rgba(122, 162, 255, 0.4); }
+    .arch-icon { font-size: 1.45rem; margin-bottom: 0.45rem; }
+    .arch-name { font-size: 0.84rem; color: var(--text); font-weight: 600; }
+    .arch-sub  { font-size: 0.7rem; color: var(--dim); margin-top: 0.3rem; line-height: 1.4; }
+    .arch-arrow {
+      position: relative;
+      color: var(--dim); font-size: 1.2rem;
+      align-self: center; text-align: center;
+    }
 
+    /* api */
     .api-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .api-block { background: var(--panel-2); border: 1px solid var(--border); border-radius: 0.55rem; overflow: hidden; }
-    .api-block .endpoint { padding: 0.6rem 0.85rem; border-bottom: 1px solid var(--border); font-family: 'SF Mono','Fira Code',monospace; font-size: 0.78rem; display: flex; align-items: center; gap: 0.6rem; }
-    .api-method { background: rgba(34,197,94,0.18); color: #86efac; padding: 0.1rem 0.45rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; }
-    .api-block pre { padding: 0.85rem; font-family: 'SF Mono','Fira Code',monospace; font-size: 0.74rem; color: #cbd5e1; line-height: 1.6; overflow-x: auto; white-space: pre; }
-    .api-block .k { color: #93c5fd; }
-    .api-block .s { color: #86efac; }
-    .api-block .n { color: #fcd34d; }
-    .api-block .c { color: var(--dim); }
+    .api-block {
+      background: var(--panel-2); border: 1px solid var(--border);
+      border-radius: 0.7rem; overflow: hidden;
+    }
+    .api-block .endpoint {
+      padding: 0.7rem 1rem; border-bottom: 1px solid var(--border);
+      font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+      display: flex; align-items: center; gap: 0.6rem;
+      background: rgba(122,162,255,0.04);
+      color: var(--text-2);
+    }
+    .api-method {
+      background: rgba(52, 211, 153, 0.18); color: #6ee7b7;
+      padding: 0.12rem 0.5rem; border-radius: 5px;
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;
+    }
+    .api-block pre {
+      padding: 1rem 1.15rem; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.76rem; color: var(--text-2); line-height: 1.7;
+      overflow-x: auto; white-space: pre;
+    }
+    .k { color: #b9caff; }
+    .s { color: #6ee7b7; }
+    .n { color: #fde68a; }
+    .c { color: var(--dim); font-style: italic; }
 
+    /* glossary */
+    .gloss-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.85rem; }
+    .gloss { background: var(--panel-2); border: 1px solid var(--border); border-radius: 0.65rem; padding: 0.95rem 1.1rem; }
+    .gloss dt { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: var(--accent); font-weight: 600; margin-bottom: 0.3rem; }
+    .gloss dd { color: var(--muted); font-size: 0.84rem; line-height: 1.55; }
+
+    /* footer */
     footer {
-      text-align: center; padding: 2rem 1rem; color: var(--dim); font-size: 0.8rem;
+      position: relative; z-index: 1;
+      text-align: center; padding: 2.5rem 1rem; color: var(--dim); font-size: 0.85rem;
       border-top: 1px solid var(--border); margin-top: 1.5rem;
     }
     footer a { color: var(--muted); text-decoration: none; }
     footer a:hover { color: var(--accent); }
 
-    @media (max-width: 760px) {
+    @media (max-width: 880px) {
       main { grid-template-columns: 1fr; }
       .stat-grid { grid-template-columns: repeat(2, 1fr); }
       .arch-grid { grid-template-columns: repeat(2, 1fr); }
       .api-grid { grid-template-columns: 1fr; }
-      h1 { font-size: 1.6rem; }
+      .gloss-grid { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+      .explainer { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
 
+<nav>
+  <div class="nav-inner">
+    <div class="brand">
+      <span class="brand-mark">📜</span>
+      <span>reg-change-engine</span>
+    </div>
+    <div class="nav-links">
+      <a href="#what">What it does</a>
+      <a href="#changes">Changes</a>
+      <a href="#diff">Diff</a>
+      <a href="#api">API</a>
+      <a href="#arch">Architecture</a>
+    </div>
+    <a class="nav-cta" href="https://github.com/astew24/reg-change-engine">View on GitHub →</a>
+  </div>
+</nav>
+
 <header>
   <div class="badge-row">
-    <span class="badge"><span class="dot"></span>Federal Register Monitor</span>
+    <span class="badge"><span class="dot"></span>Live demo</span>
     <span class="badge muted">Last ingestion · 2026-04-24</span>
-    <span class="badge muted">Python · FastAPI · PostgreSQL · DistilBERT</span>
+    <span class="badge warn">Sample data — page renders example output, not a live DB</span>
   </div>
-  <h1>reg-change-engine</h1>
+  <h1>What changed in U.S.<br><span class="grad">federal regulations</span> today?</h1>
   <p class="subtitle">
-    Daily token-level diffs of Federal Register bulk XML, classified into 11 regulatory domains
-    using a zero-shot DistilRoBERTa NLI model. Surfaces every <em>added</em>, <em>removed</em>, and
-    <em>modified</em> paragraph through a FastAPI service backed by PostgreSQL.
+    <b style="color:var(--text);">reg-change-engine</b> downloads the U.S. Federal Register's daily bulk XML, computes a
+    word-level diff against the previous business day, and classifies every changed paragraph
+    into one of 11 regulatory domains using a zero-shot DistilRoBERTa model.
+  </p>
+  <p class="subtitle-2">
+    The result is a structured, queryable feed of <em>exactly</em> which words were added, removed, or
+    modified across every federal rule — useful for compliance teams, policy researchers, and
+    anyone who needs to know what regulators changed before someone else does.
   </p>
   <div class="links">
-    <a href="https://github.com/astew24/reg-change-engine">GitHub →</a>
-    <a href="https://github.com/astew24/reg-change-engine#api-endpoints">API reference</a>
-    <a href="https://www.federalregister.gov/reader-aids/developer-resources/rest-api">FR API docs</a>
-    <a href="https://huggingface.co/cross-encoder/nli-distilroberta-base">Model card</a>
+    <a class="primary" href="https://github.com/astew24/reg-change-engine">View source →</a>
+    <a href="#what">How it works</a>
+    <a href="#api">API examples</a>
+    <a href="https://www.federalregister.gov/reader-aids/developer-resources/rest-api">Federal Register API</a>
   </div>
 </header>
 
 <main>
 
+  <!-- What it does explainer -->
+  <div class="explainer" id="what">
+    <div class="icon-box">📖</div>
+    <div>
+      <h3>New here? Read this first.</h3>
+      <p>
+        The <b>Federal Register</b> is the U.S. government's daily journal of every new rule,
+        proposed rule, and notice published by federal agencies (EPA, SEC, CMS, etc.).
+        Every business day, it publishes thousands of paragraphs of regulatory text.
+      </p>
+      <p>
+        This project diffs <em>today's</em> publication against <em>yesterday's</em> at the
+        word level — surfacing every single token that was <code>added</code>,
+        <code>removed</code>, or <code>modified</code>. Each changed paragraph is then
+        classified into a regulatory domain (e.g. <em>environmental</em>, <em>financial</em>,
+        <em>healthcare</em>) so you can filter the feed to whatever you actually care about.
+      </p>
+      <p>
+        The dashboard below is what a daily summary looks like. Below the metrics you'll find
+        the actual change records, a token-level diff example, classifier performance per
+        domain, and the API you'd query to integrate this feed into your own systems.
+      </p>
+    </div>
+  </div>
+
   <!-- Stat row -->
   <div class="card full">
+    <div class="card-head">
+      <div>
+        <h2>Today at a glance</h2>
+      </div>
+      <div class="meta">2026-04-24 · 1 publication</div>
+    </div>
+    <p class="caption">
+      A snapshot of the most recent ingestion run. <b>Paragraphs diffed</b> is the total
+      pulled from the Federal Register XML; <b>changed paragraphs</b> is how many of those
+      actually differed from the previous business day.
+    </p>
     <div class="stat-grid">
       <div class="stat">
         <div class="stat-val">2,311</div>
         <div class="stat-lbl">Paragraphs diffed</div>
-        <div class="stat-delta">+5.8% vs prev day</div>
+        <div class="stat-help">All paragraphs read from today's bulk XML</div>
+        <div class="stat-delta">+5.8% vs prev business day</div>
       </div>
       <div class="stat">
         <div class="stat-val">328</div>
         <div class="stat-lbl">Changed paragraphs</div>
+        <div class="stat-help">Added, removed, or modified vs yesterday</div>
         <div class="stat-delta">14.2% change rate</div>
       </div>
       <div class="stat">
         <div class="stat-val">93.7%</div>
         <div class="stat-lbl">Avg classifier confidence</div>
-        <div class="stat-delta">≥ 0.50 threshold</div>
+        <div class="stat-help">Mean softmax score across all changes</div>
+        <div class="stat-delta">≥ 0.50 fallback threshold</div>
       </div>
       <div class="stat">
         <div class="stat-val">11</div>
         <div class="stat-lbl">Regulatory domains</div>
-        <div class="stat-delta">zero-shot NLI</div>
+        <div class="stat-help">Zero-shot NLI labels (no fine-tuning)</div>
+        <div class="stat-delta">env · fin · hlt · trn · ...</div>
       </div>
     </div>
   </div>
 
   <!-- Recent changes table -->
   <div class="card full" id="changes">
-    <h2>Recent changes <span class="meta">2026-04-24 · GET /changes?pub_date=2026-04-24</span></h2>
+    <div class="card-head">
+      <div>
+        <h2>Recent changes</h2>
+      </div>
+      <div class="meta">GET /changes?pub_date=2026-04-24</div>
+    </div>
+    <p class="caption">
+      Each row is one paragraph that differs from the previous business day's publication.
+      <b>Type</b> is whether it was newly added, removed entirely, or modified in place.
+      <b>Domain</b> is the predicted regulatory area; <b>conf.</b> is how sure the classifier
+      is on a 0–1 scale.
+    </p>
     <table>
       <thead>
         <tr>
@@ -204,13 +459,13 @@
           <th>Type</th>
           <th>Domain</th>
           <th>Conf.</th>
-          <th>New text (excerpt)</th>
+          <th>What changed (excerpt)</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td class="doc">2026-08901</td>
-          <td>EPA</td>
+          <td class="agency">EPA</td>
           <td><span class="pill pill-modified">modified</span></td>
           <td><span class="pill pill-env">environmental</span></td>
           <td>0.981</td>
@@ -218,7 +473,7 @@
         </tr>
         <tr>
           <td class="doc">2026-08874</td>
-          <td>SEC</td>
+          <td class="agency">SEC</td>
           <td><span class="pill pill-added">added</span></td>
           <td><span class="pill pill-fin">financial</span></td>
           <td>0.976</td>
@@ -226,7 +481,7 @@
         </tr>
         <tr>
           <td class="doc">2026-08812</td>
-          <td>CMS</td>
+          <td class="agency">CMS</td>
           <td><span class="pill pill-modified">modified</span></td>
           <td><span class="pill pill-hlt">healthcare</span></td>
           <td>0.963</td>
@@ -234,7 +489,7 @@
         </tr>
         <tr>
           <td class="doc">2026-08770</td>
-          <td>USDA</td>
+          <td class="agency">USDA</td>
           <td><span class="pill pill-removed">removed</span></td>
           <td><span class="pill pill-agr">agriculture</span></td>
           <td>0.948</td>
@@ -242,7 +497,7 @@
         </tr>
         <tr>
           <td class="doc">2026-08741</td>
-          <td>FMCSA</td>
+          <td class="agency">FMCSA</td>
           <td><span class="pill pill-added">added</span></td>
           <td><span class="pill pill-trn">transportation</span></td>
           <td>0.957</td>
@@ -250,7 +505,7 @@
         </tr>
         <tr>
           <td class="doc">2026-08712</td>
-          <td>FERC</td>
+          <td class="agency">FERC</td>
           <td><span class="pill pill-modified">modified</span></td>
           <td><span class="pill pill-enr">energy</span></td>
           <td>0.944</td>
@@ -258,7 +513,7 @@
         </tr>
         <tr>
           <td class="doc">2026-08688</td>
-          <td>OCC</td>
+          <td class="agency">OCC</td>
           <td><span class="pill pill-added">added</span></td>
           <td><span class="pill pill-fin">financial</span></td>
           <td>0.969</td>
@@ -266,7 +521,7 @@
         </tr>
         <tr>
           <td class="doc">2026-08651</td>
-          <td>DOL</td>
+          <td class="agency">DOL</td>
           <td><span class="pill pill-modified">modified</span></td>
           <td><span class="pill pill-lab">labor</span></td>
           <td>0.938</td>
@@ -278,60 +533,115 @@
 
   <!-- Domain donut -->
   <div class="card" id="domains">
-    <h2>Domain breakdown <span class="meta">328 changes</span></h2>
-    <div style="position:relative;height:240px;">
+    <div class="card-head">
+      <h2>Where the changes were</h2>
+      <span class="meta">328 changes</span>
+    </div>
+    <p class="caption">
+      Of the <b>328 changed paragraphs</b> on this day, here's how many fell into each
+      regulatory domain. Financial and environmental rules dominate — typical for any
+      given week.
+    </p>
+    <div style="position:relative;height:260px;">
       <canvas id="domainChart"></canvas>
     </div>
   </div>
 
   <!-- Diff-type bar -->
   <div class="card" id="difftype">
-    <h2>Diff type <span class="meta">added · modified · removed</span></h2>
-    <div style="position:relative;height:240px;">
+    <div class="card-head">
+      <h2>What kind of changes</h2>
+      <span class="meta">stacked by diff_type</span>
+    </div>
+    <p class="caption">
+      For each domain, the breakdown of <b>added</b> (new paragraphs), <b>modified</b>
+      (existing paragraphs whose text changed), and <b>removed</b> (paragraphs that
+      disappeared between yesterday and today).
+    </p>
+    <div style="position:relative;height:260px;">
       <canvas id="diffTypeChart"></canvas>
     </div>
   </div>
 
   <!-- Token-level diff example -->
-  <div class="card full">
-    <h2>Token-level diff <span class="meta">Doc 2026-08901 (EPA) · paragraph 3 / 12</span></h2>
+  <div class="card full" id="diff">
+    <div class="card-head">
+      <h2>What "token-level diff" actually looks like</h2>
+      <span class="meta">Doc 2026-08901 (EPA) · ¶3 / 12</span>
+    </div>
+    <p class="caption">
+      Most regulatory monitors only tell you that <em>a document changed</em>. This one
+      shows you <em>which words</em>. Below: the EPA's PM2.5 standard. <span class="del">Red strikethrough</span>
+      = removed; <span class="ins">green</span> = inserted. Numbers tightened from 35 to 25
+      μg/m³ — easy to miss in a 40-page rule.
+    </p>
     <div class="diff-meta">
-      <code>differ.py</code> · <code>SequenceMatcher</code> · diff_type:
-      <span class="pill pill-modified" style="font-size:0.65rem;">modified</span>
+      <code>differ.py</code>
+      <span style="color:var(--dim);">·</span>
+      <code>SequenceMatcher</code>
+      <span style="color:var(--dim);">·</span>
+      <span>diff_type:</span>
+      <span class="pill pill-modified">modified</span>
     </div>
     <div class="diff-box">
       <span class="eq">The primary national ambient air quality standard for fine particulate matter (PM2.5) shall not exceed </span><span class="del">thirty-five (35)</span><span class="ins">twenty-five (25)</span><span class="eq"> micrograms per cubic meter (μg/m³) as a 24-hour average. The annual standard is </span><span class="del">12</span><span class="ins">9</span><span class="eq"> μg/m³ for all Class I and Class II attainment areas.</span>
     </div>
     <div class="diff-tokens">
       <span style="color:#fca5a5;">●&nbsp;<strong>4</strong> deleted</span>
-      <span style="color:#86efac;">●&nbsp;<strong>4</strong> inserted</span>
-      <span style="color:#94a3b8;">●&nbsp;<strong>46</strong> equal</span>
+      <span style="color:#6ee7b7;">●&nbsp;<strong>4</strong> inserted</span>
+      <span style="color:var(--muted);">●&nbsp;<strong>46</strong> equal</span>
     </div>
   </div>
 
   <!-- Daily volume timeline -->
   <div class="card full">
-    <h2>Daily change volume <span class="meta">last 14 business days</span></h2>
-    <div style="position:relative;height:220px;">
+    <div class="card-head">
+      <h2>Daily change volume</h2>
+      <span class="meta">last 14 business days</span>
+    </div>
+    <p class="caption">
+      Number of changed paragraphs ingested per day. Federal Register volume is naturally
+      bumpy — quiet days hover near 250, while heavier rule-issuing days push past 320.
+    </p>
+    <div style="position:relative;height:240px;">
       <canvas id="volumeChart"></canvas>
     </div>
   </div>
 
   <!-- Confidence by domain -->
   <div class="card full">
-    <h2>Avg classifier confidence by domain <span class="meta">last 30 days</span></h2>
-    <div style="position:relative;height:220px;">
+    <div class="card-head">
+      <h2>Classifier confidence by domain</h2>
+      <span class="meta">last 30 days · n = 4,872 paragraphs</span>
+    </div>
+    <p class="caption">
+      How sure the model is, on average, when assigning each domain label. Higher is better.
+      Domains like <em>environmental</em> and <em>financial</em> have distinctive vocabulary;
+      <em>other</em> is the deliberate fallback when nothing scores above the
+      <code style="font-family:'JetBrains Mono',monospace;color:var(--accent);">min_confidence</code> threshold,
+      so its average is lower by design.
+    </p>
+    <div style="position:relative;height:280px;">
       <canvas id="confChart"></canvas>
     </div>
   </div>
 
   <!-- API quick reference -->
   <div class="card full" id="api">
-    <h2>API <span class="meta">localhost:8000 · OpenAPI at /docs</span></h2>
+    <div class="card-head">
+      <h2>The REST API</h2>
+      <span class="meta">FastAPI · OpenAPI at /docs</span>
+    </div>
+    <p class="caption">
+      Once the pipeline writes records to Postgres, this is how you'd consume them. All
+      endpoints return JSON. Filter by <code style="font-family:'JetBrains Mono',monospace;color:var(--accent);">pub_date</code>
+      and <code style="font-family:'JetBrains Mono',monospace;color:var(--accent);">domain</code>; paginate with
+      <code style="font-family:'JetBrains Mono',monospace;color:var(--accent);">limit</code> and <code style="font-family:'JetBrains Mono',monospace;color:var(--accent);">offset</code>.
+    </p>
     <div class="api-grid">
       <div class="api-block">
         <div class="endpoint"><span class="api-method">GET</span><span>/changes?pub_date=2026-04-24&amp;domain=financial</span></div>
-<pre><span class="c">// 200 OK</span>
+<pre><span class="c">// 200 OK — paginated change records</span>
 {
   <span class="k">"total"</span>: <span class="n">42</span>,
   <span class="k">"limit"</span>: <span class="n">50</span>,
@@ -350,7 +660,7 @@
       </div>
       <div class="api-block">
         <div class="endpoint"><span class="api-method">GET</span><span>/stats</span></div>
-<pre><span class="c">// 200 OK</span>
+<pre><span class="c">// 200 OK — totals + avg confidence by domain</span>
 [
   { <span class="k">"domain"</span>: <span class="s">"financial"</span>,
     <span class="k">"total_changes"</span>: <span class="n">8421</span>,
@@ -367,47 +677,110 @@
   </div>
 
   <!-- Architecture -->
-  <div class="card full">
-    <h2>Architecture</h2>
+  <div class="card full" id="arch">
+    <div class="card-head">
+      <h2>How a single day flows through the pipeline</h2>
+      <span class="meta">~3 min end-to-end on a laptop</span>
+    </div>
+    <p class="caption">
+      Five stages: download today's XML, diff against yesterday's cached copy, classify the
+      changed paragraphs, write structured records to Postgres, serve them via FastAPI.
+      Each stage is in its own module so it's easy to test or swap.
+    </p>
     <div class="arch-grid">
       <div class="arch-step">
         <div class="arch-icon">📄</div>
-        <div class="arch-name">FR Bulk XML</div>
-        <div class="arch-sub">federalregister.gov · daily fetch</div>
+        <div class="arch-name">Federal Register</div>
+        <div class="arch-sub">Bulk XML · daily fetch with retry</div>
       </div>
       <div class="arch-step">
         <div class="arch-icon">⚙️</div>
         <div class="arch-name">differ.py</div>
-        <div class="arch-sub">SequenceMatcher · SHA-256 hashing</div>
+        <div class="arch-sub">SequenceMatcher · SHA-256 paragraph hashing</div>
       </div>
       <div class="arch-step">
         <div class="arch-icon">🤖</div>
         <div class="arch-name">classifier.py</div>
-        <div class="arch-sub">DistilRoBERTa NLI · 11 labels</div>
+        <div class="arch-sub">DistilRoBERTa zero-shot NLI · 11 labels</div>
       </div>
       <div class="arch-step">
         <div class="arch-icon">🗄️</div>
         <div class="arch-name">PostgreSQL</div>
-        <div class="arch-sub">changed_paragraphs · indexed by pub_date</div>
+        <div class="arch-sub">changed_paragraphs table · indexed by pub_date</div>
       </div>
       <div class="arch-step">
         <div class="arch-icon">🚀</div>
         <div class="arch-name">FastAPI</div>
-        <div class="arch-sub">/changes · /domains · /stats</div>
+        <div class="arch-sub">/changes · /domains · /stats · /health</div>
       </div>
+    </div>
+  </div>
+
+  <!-- Glossary -->
+  <div class="card full">
+    <div class="card-head">
+      <h2>Quick glossary</h2>
+      <span class="meta">terms used on this page</span>
+    </div>
+    <div class="gloss-grid">
+      <dl class="gloss">
+        <dt>Federal Register</dt>
+        <dd>The official daily journal of the U.S. government, where every federal agency publishes new and proposed regulations.</dd>
+      </dl>
+      <dl class="gloss">
+        <dt>Bulk XML</dt>
+        <dd>The full text of a single day's Federal Register, served as one downloadable XML file. The whole-document atomicity is what makes day-over-day diffing reliable.</dd>
+      </dl>
+      <dl class="gloss">
+        <dt>diff_type</dt>
+        <dd>How a paragraph changed: <code>added</code> (new this publication), <code>removed</code> (gone from this publication), or <code>modified</code> (text changed in place).</dd>
+      </dl>
+      <dl class="gloss">
+        <dt>Token-level diff</dt>
+        <dd>Comparison at the word level, not just the paragraph or document level — so you can highlight the exact words that changed inside an otherwise unchanged sentence.</dd>
+      </dl>
+      <dl class="gloss">
+        <dt>Zero-shot NLI</dt>
+        <dd>A classifier that maps text to candidate labels using natural-language entailment, without any labeled training data. Lets the project work on day one with no manual annotation.</dd>
+      </dl>
+      <dl class="gloss">
+        <dt>domain_score</dt>
+        <dd>The model's confidence in its top-predicted domain, between 0 and 1. Predictions below the configurable <code>min_confidence</code> are returned as <code>"other"</code> rather than confidently mislabeled.</dd>
+      </dl>
     </div>
   </div>
 
 </main>
 
 <footer>
-  reg-change-engine · <a href="https://github.com/astew24">astew24</a> · UC San Diego · 2026
+  <div>
+    Built by <a href="https://github.com/astew24">@astew24</a> · UC San Diego ·
+    <a href="https://github.com/astew24/reg-change-engine">source on GitHub</a>
+  </div>
+  <div style="margin-top:0.5rem;font-size:0.78rem;color:var(--dim);">
+    Demo numbers and document IDs above are illustrative — the live pipeline reads real Federal Register XML.
+  </div>
 </footer>
 
 <script>
-  const TEXT = '#cbd5e1', MUTED = '#94a3b8', GRID = '#1f2c47';
+  const MUTED = '#8b94b4';
+  const GRID = 'rgba(99, 119, 175, 0.14)';
+  const FONT = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
   Chart.defaults.color = MUTED;
-  Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  Chart.defaults.font.family = FONT;
+  Chart.defaults.font.size = 11;
+
+  const TOOLTIP = {
+    backgroundColor: '#0a0e22',
+    borderColor: 'rgba(99, 119, 175, 0.32)',
+    borderWidth: 1,
+    titleColor: '#e8ecf6',
+    bodyColor: '#c4cbe0',
+    padding: 10,
+    cornerRadius: 8,
+    titleFont: { weight: '600' },
+  };
 
   // Domain donut
   new Chart(document.getElementById('domainChart'), {
@@ -416,18 +789,19 @@
       labels: ['Financial','Environmental','Healthcare','Transportation','Energy','Agriculture','Labor','Defense','Education','Telecom','Other'],
       datasets: [{
         data: [82, 64, 49, 36, 30, 23, 19, 10, 8, 6, 11],
-        backgroundColor: ['#3b82f6','#22c55e','#a855f7','#94a3b8','#f59e0b','#f97316','#ec4899','#ef4444','#14b8a6','#8b5cf6','#475569'],
-        borderColor: '#0e182d',
+        backgroundColor: ['#7aa2ff','#34d399','#a78bfa','#94a3b8','#fbbf24','#fb923c','#f472b6','#f87171','#22d3ee','#c084fc','#475569'],
+        borderColor: '#0a0e22',
         borderWidth: 2,
-        hoverOffset: 6,
+        hoverOffset: 8,
+        hoverBorderColor: '#0a0e22',
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      cutout: '66%',
+      cutout: '68%',
       plugins: {
-        legend: { position: 'right', labels: { color: MUTED, font: { size: 10 }, boxWidth: 10, padding: 7 } },
-        tooltip: { backgroundColor: '#0b1120', borderColor: GRID, borderWidth: 1 }
+        legend: { position: 'right', labels: { color: MUTED, font: { size: 10.5, family: FONT }, boxWidth: 10, padding: 8, usePointStyle: true, pointStyle: 'circle' } },
+        tooltip: { ...TOOLTIP, callbacks: { label: (c) => ` ${c.label}: ${c.parsed} changes` } }
       }
     }
   });
@@ -438,20 +812,20 @@
     data: {
       labels: ['Fin','Env','Hlt','Trn','Enr','Agr','Lab'],
       datasets: [
-        { label: 'added',    data: [34, 22, 18, 14, 11,  9,  7], backgroundColor: '#22c55e' },
-        { label: 'modified', data: [38, 31, 24, 17, 14, 10,  8], backgroundColor: '#3b82f6' },
-        { label: 'removed',  data: [10, 11,  7,  5,  5,  4,  4], backgroundColor: '#ef4444' },
+        { label: 'added',    data: [34, 22, 18, 14, 11,  9,  7], backgroundColor: '#34d399', borderRadius: 4, },
+        { label: 'modified', data: [38, 31, 24, 17, 14, 10,  8], backgroundColor: '#7aa2ff', borderRadius: 4, },
+        { label: 'removed',  data: [10, 11,  7,  5,  5,  4,  4], backgroundColor: '#f87171', borderRadius: 4, },
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       scales: {
-        x: { stacked: true, grid: { color: GRID }, ticks: { color: MUTED } },
-        y: { stacked: true, grid: { color: GRID }, ticks: { color: MUTED } }
+        x: { stacked: true, grid: { display: false }, ticks: { color: MUTED } },
+        y: { stacked: true, grid: { color: GRID }, ticks: { color: MUTED }, title: { display: true, text: 'paragraphs', color: MUTED, font: { size: 10 } } }
       },
       plugins: {
-        legend: { labels: { color: MUTED, font: { size: 11 }, boxWidth: 12 } },
-        tooltip: { backgroundColor: '#0b1120', borderColor: GRID, borderWidth: 1 }
+        legend: { labels: { color: MUTED, font: { size: 11, family: FONT }, boxWidth: 12, usePointStyle: true, pointStyle: 'circle' } },
+        tooltip: TOOLTIP
       }
     }
   });
@@ -459,28 +833,32 @@
   // Daily volume timeline
   const days = ['04/07','04/08','04/09','04/10','04/11','04/14','04/15','04/16','04/17','04/18','04/21','04/22','04/23','04/24'];
   const vol  = [276, 312, 258, 244, 312, 289, 271, 305, 318, 264, 296, 281, 310, 328];
-  new Chart(document.getElementById('volumeChart'), {
+  const ctx  = document.getElementById('volumeChart').getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, 240);
+  grad.addColorStop(0, 'rgba(122, 162, 255, 0.85)');
+  grad.addColorStop(1, 'rgba(122, 162, 255, 0.18)');
+  new Chart(ctx, {
     type: 'bar',
     data: {
       labels: days,
       datasets: [{
         label: 'Changed paragraphs',
         data: vol,
-        backgroundColor: 'rgba(96,165,250,0.5)',
-        borderColor: '#60a5fa',
-        borderWidth: 1,
-        borderRadius: 4,
+        backgroundColor: grad,
+        borderColor: '#7aa2ff',
+        borderWidth: 0,
+        borderRadius: 6,
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       scales: {
         x: { grid: { display: false }, ticks: { color: MUTED } },
-        y: { grid: { color: GRID }, ticks: { color: MUTED }, beginAtZero: true }
+        y: { grid: { color: GRID }, ticks: { color: MUTED }, beginAtZero: true, title: { display: true, text: 'paragraphs', color: MUTED, font: { size: 10 } } }
       },
       plugins: {
         legend: { display: false },
-        tooltip: { backgroundColor: '#0b1120', borderColor: GRID, borderWidth: 1 }
+        tooltip: { ...TOOLTIP, callbacks: { label: (c) => ` ${c.parsed.y} changed paragraphs` } }
       }
     }
   });
@@ -495,24 +873,24 @@
         data: [0.952, 0.948, 0.931, 0.919, 0.908, 0.894, 0.882, 0.871, 0.842, 0.811, 0.673],
         backgroundColor: (ctx) => {
           const v = ctx.raw;
-          if (v >= 0.90) return '#22c55e';
-          if (v >= 0.80) return '#60a5fa';
-          if (v >= 0.70) return '#f59e0b';
-          return '#ef4444';
+          if (v >= 0.90) return '#34d399';
+          if (v >= 0.80) return '#7aa2ff';
+          if (v >= 0.70) return '#fbbf24';
+          return '#f87171';
         },
-        borderRadius: 4,
+        borderRadius: 5,
       }]
     },
     options: {
       indexAxis: 'y',
       responsive: true, maintainAspectRatio: false,
       scales: {
-        x: { min: 0.5, max: 1.0, grid: { color: GRID }, ticks: { color: MUTED, callback: v => v.toFixed(2) } },
-        y: { grid: { display: false }, ticks: { color: MUTED, font: { size: 11 } } }
+        x: { min: 0.5, max: 1.0, grid: { color: GRID }, ticks: { color: MUTED, callback: (v) => v.toFixed(2) }, title: { display: true, text: 'avg softmax score (0–1)', color: MUTED, font: { size: 10 } } },
+        y: { grid: { display: false }, ticks: { color: MUTED, font: { size: 11, family: FONT } } }
       },
       plugins: {
         legend: { display: false },
-        tooltip: { backgroundColor: '#0b1120', borderColor: GRID, borderWidth: 1, callbacks: { label: c => 'conf: ' + c.raw.toFixed(3) } }
+        tooltip: { ...TOOLTIP, callbacks: { label: (c) => ' confidence: ' + c.raw.toFixed(3) } }
       }
     }
   });
